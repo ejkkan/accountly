@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "accountly-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+}
