@@ -11,10 +11,13 @@ import {
   Database,
   Percent,
   SplitSquareHorizontal,
+  FileText,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Image3D } from "@/components/image-3d";
+import { Graphic3D } from "@/components/graphic-3d";
 
 const parseFeatures = [
   {
@@ -91,12 +94,9 @@ export function FeaturesSection() {
         </div>
 
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
-          <Image3D
-            lightSrc="/feature-1-light.png"
-            darkSrc="/feature-1-dark.png"
-            alt="Parsed invoice mapped to BAS account codes"
-            direction="left"
-          />
+          <Graphic3D>
+            <ExtractionMock />
+          </Graphic3D>
           <div className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
@@ -206,15 +206,106 @@ export function FeaturesSection() {
             </div>
           </div>
 
-          <Image3D
-            lightSrc="/feature-2-light.png"
-            darkSrc="/feature-2-dark.png"
-            alt="Accountant reviewing PDF next to proposed journal entry"
-            direction="right"
-            className="order-1 lg:order-2"
-          />
+          <Graphic3D className="order-1 lg:order-2">
+            <ReviewMock />
+          </Graphic3D>
         </div>
       </div>
     </section>
+  );
+}
+
+/** Feature 1 graphic: a PDF parsed into structured fields + BAS-mapped lines. */
+function ExtractionMock() {
+  const lines = [
+    { desc: "Cloud hosting", acct: "6540", amt: "70 000,00" },
+    { desc: "Support hours", acct: "6530", amt: "23 500,00" },
+  ];
+  return (
+    <div className="flex h-full w-full flex-col gap-3 text-xs">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <FileText className="size-4" />
+          <span className="font-mono">invoice_1047.pdf</span>
+        </div>
+        <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400">
+          parsed
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border bg-background/60 p-3">
+        <span className="text-muted-foreground">Supplier</span>
+        <span className="truncate text-right">Bright IT Solutions AB</span>
+        <span className="text-muted-foreground">Invoice #</span>
+        <span className="text-right font-mono tabular-nums">1047</span>
+        <span className="text-muted-foreground">Date</span>
+        <span className="text-right font-mono tabular-nums">2026-03-10</span>
+      </div>
+      <div className="space-y-1.5 rounded-lg border bg-background/60 p-3 font-mono">
+        {lines.map((l) => (
+          <div key={l.acct} className="flex items-center justify-between gap-2">
+            <span className="truncate text-muted-foreground">{l.desc}</span>
+            <span className="flex items-center gap-2">
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                {l.acct}
+              </span>
+              <span className="tabular-nums">{l.amt}</span>
+            </span>
+          </div>
+        ))}
+        <div className="flex items-center justify-between border-t pt-1.5 font-semibold">
+          <span className="text-muted-foreground">Total incl. moms</span>
+          <span className="tabular-nums">116 875,00</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Feature 2 graphic: the PDF beside the proposed entry, with approve/decline. */
+function ReviewMock() {
+  const postings = [
+    { code: "5010", amt: "10 000,00" },
+    { code: "2640", amt: "2 500,00" },
+    { code: "2440", amt: "12 500,00" },
+  ];
+  return (
+    <div className="flex h-full w-full gap-3 text-xs">
+      <div className="flex flex-1 flex-col gap-1.5 rounded-lg border bg-background/60 p-3">
+        <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <FileText className="size-3" /> PDF
+        </div>
+        {[90, 70, 82, 55, 74, 40].map((w, i) => (
+          <div
+            key={i}
+            className="h-1.5 rounded bg-muted-foreground/15"
+            style={{ width: `${w}%` }}
+          />
+        ))}
+      </div>
+      <div className="flex flex-1 flex-col gap-2 rounded-lg border bg-background/60 p-3">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Journal entry</span>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+            pending
+          </span>
+        </div>
+        <div className="space-y-1 font-mono text-[11px]">
+          {postings.map((p) => (
+            <div key={p.code} className="flex justify-between">
+              <span className="text-muted-foreground">{p.code}</span>
+              <span className="tabular-nums">{p.amt}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto flex gap-2 pt-1">
+          <span className="flex flex-1 items-center justify-center gap-1 rounded-md bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground">
+            <Check className="size-3" /> Approve
+          </span>
+          <span className="flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium">
+            <X className="size-3" /> Decline
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
