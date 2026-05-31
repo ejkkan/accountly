@@ -1,5 +1,7 @@
 "use client";
 
+import { Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMinor } from "@/lib/money";
+import { useApproveBill, useDeclineBill } from "@/hooks/use-decide-bill";
 
 export interface Posting {
   id: string;
@@ -26,6 +29,7 @@ export interface JournalEntry {
   id: string;
   status: string;
   reasoning: string | null;
+  decidedAt?: string | null;
 }
 
 /**
@@ -40,10 +44,12 @@ export interface JournalEntry {
  * edit a posting") has somewhere obvious to land.
  */
 export function JournalEntryCard({
+  billId,
   journalEntry,
   postings,
   currency,
 }: {
+  billId: string;
   journalEntry: JournalEntry;
   postings: Posting[];
   currency: string;
@@ -52,16 +58,50 @@ export function JournalEntryCard({
   const totalCredit = postings.reduce((sum, p) => sum + BigInt(p.creditMinor), 0n);
   const balanced = totalDebit === totalCredit;
 
+  const approve = useApproveBill();
+  const decline = useDeclineBill();
+  const isPending = approve.isPending || decline.isPending;
+  const showButtons = journalEntry.status === "proposed";
+  const decisionError = approve.error?.message ?? decline.error?.message;
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
-        <div>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+        <div className="space-y-1">
           <CardTitle>Proposed journal entry</CardTitle>
           <CardDescription>
-            LLM-generated postings against the BAS chart of accounts.
+            {showButtons
+              ? "LLM-generated postings against the BAS chart of accounts."
+              : `${journalEntry.status === "approved" ? "Approved" : "Declined"} ${
+                  journalEntry.decidedAt
+                    ? `on ${new Date(journalEntry.decidedAt).toLocaleDateString("sv-SE")}`
+                    : ""
+                }`.trim()}
           </CardDescription>
         </div>
-        <StatusBadge status={journalEntry.status} />
+        {showButtons ? (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isPending || !balanced}
+              onClick={() => decline.mutate(billId)}
+            >
+              <X className="size-4" />
+              Decline
+            </Button>
+            <Button
+              size="sm"
+              disabled={isPending || !balanced}
+              onClick={() => approve.mutate(billId)}
+            >
+              <Check className="size-4" />
+              Approve
+            </Button>
+          </div>
+        ) : (
+          <StatusBadge status={journalEntry.status} />
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <Table>
@@ -105,6 +145,12 @@ export function JournalEntryCard({
         {!balanced && (
           <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
             Debits and credits don&apos;t balance — refusing to post.
+          </p>
+        )}
+
+        {decisionError && (
+          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400">
+            {decisionError}
           </p>
         )}
 

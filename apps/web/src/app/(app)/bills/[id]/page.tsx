@@ -95,6 +95,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
 
               {data.journalEntry ? (
                 <JournalEntryCard
+                  billId={data.bill.id}
                   journalEntry={data.journalEntry}
                   postings={data.postings}
                   currency={data.bill.currency}

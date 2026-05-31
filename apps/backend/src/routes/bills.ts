@@ -1,12 +1,76 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { sql } from "kysely";
 import { requireSession, type AuthVariables } from "../middleware/auth";
 import type { Env } from "../index";
 import { parseBill } from "../lib/parse-bill";
 import type { ParsedBill } from "../lib/journal-schema";
 
+type BillsContext = Context<{ Bindings: Env; Variables: AuthVariables }>;
+
 function pdfKey(organizationId: string, billId: string): string {
   return `${organizationId}/bills/${billId}.pdf`;
+}
+
+/**
+ * Shared body of /approve and /decline. Flips both the journal entry's
+ * status and the bill's status atomically.
+ *
+ * Idempotent: if the journal entry is already in the requested terminal
+ * state we just return current state (200). If it's in the *other*
+ * terminal state, we still return 200 with the existing state — the UI
+ * never offers both buttons once a decision is made, so the only way to
+ * hit this is a stale tab racing another reviewer. Matching that race
+ * with the existing state is safer than "you can't undo."
+ */
+async function decide(c: BillsContext, decision: "approved" | "declined") {
+  const db = c.get("db");
+  const organizationId = c.get("organizationId");
+  const userId = c.get("userId");
+  // The two routes that call decide both pin :id, so this never returns
+  // undefined at runtime — but the generic `Context` type doesn't carry
+  // the route pattern so we narrow defensively.
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "bad request" } as const, 400);
+
+  const bill = await db
+    .selectFrom("bill")
+    .select(["id", "status"])
+    .where("id", "=", id)
+    .where("organizationId", "=", organizationId)
+    .executeTakeFirst();
+  if (!bill) {
+    return c.json({ error: "not found" } as const, 404);
+  }
+
+  const journalEntry = await db
+    .selectFrom("journalEntry")
+    .select(["id", "status"])
+    .where("billId", "=", id)
+    .executeTakeFirst();
+  if (!journalEntry) {
+    return c.json({ error: "no journal entry to decide on" } as const, 409);
+  }
+
+  // Already-terminal: return current state, don't re-stamp decidedAt.
+  if (journalEntry.status === "approved" || journalEntry.status === "declined") {
+    return c.json({ ok: true as const, status: journalEntry.status });
+  }
+
+  const now = new Date();
+  await db.transaction().execute(async (trx) => {
+    await trx
+      .updateTable("journalEntry")
+      .set({ status: decision, decidedAt: now, decidedByUserId: userId })
+      .where("id", "=", journalEntry.id)
+      .execute();
+    await trx
+      .updateTable("bill")
+      .set({ status: decision })
+      .where("id", "=", bill.id)
+      .execute();
+  });
+
+  return c.json({ ok: true as const, status: decision });
 }
 
 /**
@@ -14,12 +78,15 @@ function pdfKey(organizationId: string, billId: string): string {
  * `userId` + `organizationId` + a per-request Kysely instance.
  *
  * Routes:
- *   POST   /             multipart upload → R2 put → Claude parse →
- *                        bill + line items + journal entry + postings in
- *                        a single transaction
- *   GET    /             list for the active org
- *   GET    /:id          bill + line items + journal entry + postings
- *   GET    /:id/file     streams the PDF from R2
+ *   POST   /                 multipart upload → R2 put → Claude parse →
+ *                            bill + line items + journal entry + postings
+ *                            in a single transaction
+ *   GET    /                 list for the active org
+ *   GET    /:id              bill + line items + journal entry + postings
+ *   GET    /:id/file         streams the PDF from R2
+ *   POST   /:id/approve      flips journalEntry.status + bill.status to
+ *                            "approved"; idempotent if already terminal
+ *   POST   /:id/decline      same but to "declined"
  *
  * Kept as one chained expression so the route tree survives into AppType.
  */
@@ -199,6 +266,9 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     return c.json({ bill, lineItems, journalEntry: journalEntry ?? null, postings });
   })
+
+  .post("/:id/approve", async (c) => decide(c, "approved"))
+  .post("/:id/decline", async (c) => decide(c, "declined"))
 
   .get("/:id/file", async (c) => {
     const db = c.get("db");
