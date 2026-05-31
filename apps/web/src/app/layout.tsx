@@ -3,11 +3,12 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarConfigProvider } from "@/contexts/sidebar-context";
+import { Providers } from "@/components/providers";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Shadcn Dashboard",
-  description: "A dashboard built with Next.js and shadcn/ui",
+  title: "Accountly",
+  description: "Upload an invoice, get a journal entry.",
 };
 
 export default function RootLayout({
@@ -20,7 +21,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
           <SidebarConfigProvider>
-            {children}
+            <Providers>{children}</Providers>
           </SidebarConfigProvider>
         </ThemeProvider>
       </body>
