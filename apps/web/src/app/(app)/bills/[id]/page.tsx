@@ -37,7 +37,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
     if (!data) return;
     if (
       !window.confirm(
-        "Re-run the LLM on this PDF? The current proposal will be replaced and the bill returns to pending."
+        "Re-run the analysis on this PDF? The current proposal will be replaced and the bill returns to pending."
       )
     )
       return;
@@ -206,27 +206,16 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                 </Card>
               )}
 
-              {data.journalEntry ? (
+              {/* Every persisted bill has a proposal (the synchronous flow only
+                  stores on a successful, validated parse), so there's no
+                  empty-proposal state to render. */}
+              {data.journalEntry && (
                 <JournalEntryCard
                   billId={data.bill.id}
                   journalEntry={data.journalEntry}
                   postings={data.postings}
                   currency={data.bill.currency}
                 />
-              ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Proposed journal entry</CardTitle>
-                    <CardDescription>
-                      LLM-generated postings against the BAS chart of accounts.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                      No proposal — parsing may have failed on upload. Click Re-parse to try again.
-                    </div>
-                  </CardContent>
-                </Card>
               )}
             </div>
           </div>

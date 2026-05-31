@@ -4,10 +4,9 @@ import { api } from "@/lib/client";
 import { unwrap } from "@/lib/api";
 
 /**
- * Re-runs Claude on the existing R2 PDF — no re-upload needed. Replaces
- * the line items + journal entry + postings, resets bill.status to
- * "pending". Useful during dev or when the accountant suspects the first
- * proposal was off.
+ * Re-runs the parse agent on the existing R2 PDF — no re-upload needed.
+ * Replaces the line items + journal entry + postings and resets bill.status
+ * to "pending". Used when the accountant suspects the first proposal was off.
  */
 export function useReparseBill() {
   const qc = useQueryClient();

@@ -2,6 +2,8 @@
 
 import { useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { FileText, Loader2, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,10 +11,6 @@ import { useUploadBill } from "@/hooks/use-upload-bill";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-/**
- * Format a byte count as human-readable. Keeps two significant digits for KB+
- * so 116 875 bytes reads as "114 KB" not "114.135 KB".
- */
 function fmtSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -21,10 +19,12 @@ function fmtSize(bytes: number): string {
 
 export default function NewBillPage() {
   const router = useRouter();
+  const qc = useQueryClient();
+  const { upload, isUploading } = useUploadBill();
+
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const upload = useUploadBill();
 
   function pickFile(next: File | null) {
     setFileError(null);
@@ -32,9 +32,6 @@ export default function NewBillPage() {
       setFile(null);
       return;
     }
-    // The native file input lets anything through if the user bypasses the
-    // accept hint via "All Files"; guard at our boundary so the toast text
-    // is friendly instead of the server's 400.
     if (next.type !== "application/pdf") {
       setFile(null);
       setFileError("That doesn't look like a PDF. Try a different file.");
@@ -51,33 +48,29 @@ export default function NewBillPage() {
   function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     pickFile(e.target.files?.[0] ?? null);
   }
-
   function onDragOver(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setIsDragging(true);
   }
-
   function onDragLeave(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setIsDragging(false);
   }
-
   function onDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setIsDragging(false);
-    const dropped = e.dataTransfer.files?.[0] ?? null;
-    pickFile(dropped);
+    pickFile(e.dataTransfer.files?.[0] ?? null);
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file || isUploading) return;
     try {
-      const result = await upload.mutateAsync(file);
-      router.push(`/bills/${result.bill.id}`);
-    } catch {
-      // Global MutationCache toast handles it; stay on the form so the
-      // user can pick another file or retry.
+      const { billId } = await upload(file);
+      qc.invalidateQueries({ queryKey: ["bills"] });
+      router.push(`/bills/${billId}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
     }
   }
 
@@ -87,15 +80,15 @@ export default function NewBillPage() {
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">Upload invoice</h1>
           <p className="text-muted-foreground">
-            Drop a PDF — we&apos;ll parse it and propose a journal entry.
+            Drop a PDF — Accountly AI reads it and proposes a balanced journal entry.
           </p>
         </div>
       </div>
 
       <div className="@container/main px-4 lg:px-6">
         <Card className="mx-auto max-w-xl">
-          {upload.isPending ? (
-            <ParsingState fileName={file?.name ?? "your invoice"} />
+          {isUploading ? (
+            <AnalyzingState fileName={file?.name ?? "your invoice"} />
           ) : (
             <>
               <CardHeader>
@@ -119,16 +112,11 @@ export default function NewBillPage() {
                       {isDragging ? "Drop to attach" : "Drag a PDF here, or click to browse"}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">PDF only · max 10 MB</p>
-
-                    {/* The native input fills the dropzone so clicking anywhere
-                        opens the picker, but stays invisible so we can style the
-                        surrounding affordance ourselves. */}
                     <input
                       id="file"
                       type="file"
                       accept="application/pdf"
                       onChange={onFileChange}
-                      required
                       className="absolute inset-0 cursor-pointer opacity-0"
                     />
                   </div>
@@ -171,31 +159,34 @@ export default function NewBillPage() {
 }
 
 /**
- * Card body shown for the ~10–15s the LLM is reading the PDF. The backend
- * runs upload → R2 → parse → DB in a single request, so we can't show real
- * per-phase progress from the client; instead we show what we *do* know
- * (the filename) and set an honest time expectation.
+ * Shown while `POST /api/bills` runs end-to-end (store → parse → persist,
+ * ~10s). It's an honest indeterminate state — the model produces nothing
+ * observable until it's done reading the PDF, so we don't fake per-token
+ * progress. On success the page redirects to the bill.
  */
-function ParsingState({ fileName }: { fileName: string }) {
+function AnalyzingState({ fileName }: { fileName: string }) {
   return (
-    <CardContent className="flex flex-col items-center gap-5 px-6 py-12 text-center">
-      <div className="relative">
-        <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
-        <div className="relative flex size-14 items-center justify-center rounded-full bg-primary/10">
-          <Sparkles className="size-6 text-primary" />
+    <>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+            <div className="relative flex size-10 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles className="size-5 text-primary" />
+            </div>
+          </div>
+          <div>
+            <CardTitle className="text-base">Analyzing your invoice</CardTitle>
+            <CardDescription className="truncate">{fileName}</CardDescription>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <h2 className="text-lg font-semibold">Our AI is reading your invoice</h2>
-        <p className="text-sm text-muted-foreground">
-          Working through <span className="font-medium text-foreground">{fileName}</span> —
-          typically takes 10–15 seconds.
-        </p>
-      </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="size-3.5 animate-spin" />
-        <span>Uploading · extracting line items · mapping to BAS accounts</span>
-      </div>
-    </CardContent>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Reading the PDF and proposing a journal entry — this takes a few seconds.
+        </div>
+      </CardContent>
+    </>
   );
 }
