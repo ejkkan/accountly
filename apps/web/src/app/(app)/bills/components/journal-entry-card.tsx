@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import type { InferResponseType } from "hono/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,24 +15,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMinor } from "@/lib/money";
+import { api } from "@/lib/client";
 import { useApproveBill, useDeclineBill } from "@/hooks/use-decide-bill";
 
-export interface Posting {
-  id: string;
-  lineNo: number;
-  accountCode: string;
-  accountName: string;
-  debitMinor: string;
-  creditMinor: string;
-}
-
-export interface JournalEntry {
-  id: string;
-  status: string;
-  reasoning: string | null;
-  decidedAt?: string | null;
-  decidedByName?: string | null;
-}
+/**
+ * Props are derived from the GET /api/bills/:id response — single source of
+ * truth flows DB → Kysely → c.json → AppType → hc client → these types.
+ * Rename a column on the backend, regenerate, this component re-types
+ * itself; no hand-written interfaces to drift.
+ */
+type BillDetail = InferResponseType<(typeof api.api.bills)[":id"]["$get"]>;
+export type Posting = BillDetail["postings"][number];
+export type JournalEntry = NonNullable<BillDetail["journalEntry"]>;
 
 /**
  * Card form of the proposed journal entry. Lays out:
