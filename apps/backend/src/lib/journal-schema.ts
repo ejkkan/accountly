@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * The schema for what the parse agent returns — the single Zod contract
- * `generateObject` uses to BOTH force + runtime-validate the model's JSON and
+ * the parse agent uses to BOTH force + runtime-validate the model's JSON and
  * to type the result (`ParsedBill`). It's a discriminated union:
  *
  *   { kind: "ok", extracted, proposal }  — a bookable supplier invoice

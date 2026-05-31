@@ -1,14 +1,15 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
 import { ParsedBillSchema, type ParsedBill } from "./journal-schema";
 import { PROMPT_CHART_OF_ACCOUNTS } from "./coa";
 
 /**
  * The parse agent: one PDF in, one structured result out.
  *
- * `generateObject` forces the model to return JSON matching `ParsedBillSchema`
- * (a forced tool call under the hood) and validates the response against that
- * Zod schema — so a malformed reply throws instead of flowing through untyped.
+ * `generateText` with `Output.object` forces the model to return JSON matching
+ * `ParsedBillSchema` (a forced tool call under the hood) and validates the
+ * response against that Zod schema — so a malformed reply throws instead of
+ * flowing through untyped.
  * The result is a typed discriminated union:
  *
  *   { kind: "ok", extracted, proposal }  — a bookable invoice
@@ -143,13 +144,13 @@ export interface ParseBillEnv {
  */
 export async function parseBill(env: ParseBillEnv, pdfBytes: Uint8Array): Promise<ParsedBill> {
   const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
-  const { object } = await generateObject({
+  const { output } = await generateText({
     model: anthropic(PARSE_MODEL),
     temperature: 0,
     // Generous headroom so a long, many-line invoice can't truncate the
     // structured output mid-object (which would surface as a parse failure).
     maxOutputTokens: 8192,
-    schema: ParsedBillSchema,
+    output: Output.object({ schema: ParsedBillSchema }),
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -161,5 +162,5 @@ export async function parseBill(env: ParseBillEnv, pdfBytes: Uint8Array): Promis
       },
     ],
   });
-  return object;
+  return output;
 }

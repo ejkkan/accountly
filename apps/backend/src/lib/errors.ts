@@ -19,7 +19,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
  *   parse_wrong_currency       — we only handle SEK for now
  *   parse_missing_data         — critical fields absent (no total, etc.)
  *   parse_other                — LLM hit something we didn't enum
- *   parse_failed               — generateObject threw (network, schema, etc.)
+ *   parse_failed               — parse agent threw (network, schema, etc.)
  *   unauth / no_org            — auth middleware rejections
  *   not_found                  — bill / journal entry not found
  *   no_journal_entry           — can't approve/decline a bill without one
