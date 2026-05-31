@@ -1,40 +1,89 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth-client";
+import React from "react";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import {
+  ThemeCustomizer,
+  ThemeCustomizerTrigger,
+} from "@/components/theme-customizer";
+import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 
 /**
- * Minimal shell for every (app) page. proxy.ts already enforces session-only
- * access, so this layout just paints chrome.
+ * Same chrome the shadcnstore template ships with — sidebar + header +
+ * footer + theme customizer — wrapped around the Accountly product views.
+ * proxy.ts already enforces session-only access; this layout is pure
+ * presentation.
+ *
+ * Differs from the template's original (dashboard)/layout.tsx only by
+ * dropping `UpgradeToProButton`, which is template marketing chrome.
  */
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  async function handleSignOut() {
-    await authClient.signOut();
-    router.push("/auth/sign-in");
-  }
+export default function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
+  const { config } = useSidebarConfig();
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <Link href="/bills" className="text-lg font-semibold">
-            Accountly
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/bills">Bills</Link>
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
-              Sign out
-            </Button>
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
-    </div>
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "16rem",
+          "--sidebar-width-icon": "3rem",
+          "--header-height": "calc(var(--spacing) * 14)",
+        } as React.CSSProperties
+      }
+      className={config.collapsible === "none" ? "sidebar-none-mode" : ""}
+    >
+      {config.side === "left" ? (
+        <>
+          <AppSidebar
+            variant={config.variant}
+            collapsible={config.collapsible}
+            side={config.side}
+          />
+          <SidebarInset>
+            <SiteHeader />
+            <div className="flex flex-1 flex-col">
+              <div className="@container/main flex flex-1 flex-col gap-2">
+                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                  {children}
+                </div>
+              </div>
+            </div>
+            <SiteFooter />
+          </SidebarInset>
+        </>
+      ) : (
+        <>
+          <SidebarInset>
+            <SiteHeader />
+            <div className="flex flex-1 flex-col">
+              <div className="@container/main flex flex-1 flex-col gap-2">
+                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                  {children}
+                </div>
+              </div>
+            </div>
+            <SiteFooter />
+          </SidebarInset>
+          <AppSidebar
+            variant={config.variant}
+            collapsible={config.collapsible}
+            side={config.side}
+          />
+        </>
+      )}
+
+      <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
+      <ThemeCustomizer
+        open={themeCustomizerOpen}
+        onOpenChange={setThemeCustomizerOpen}
+      />
+    </SidebarProvider>
   );
 }

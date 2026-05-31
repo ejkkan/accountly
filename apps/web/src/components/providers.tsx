@@ -41,6 +41,9 @@ export function Providers({ children }: { children: ReactNode }) {
         replace={router.replace}
         onSessionChange={() => router.refresh()}
         Link={Link}
+        // Where every auth view lands the user after success. Defaults to
+        // "/" otherwise, which is the marketing landing page.
+        redirectTo="/bills"
       >
         {children}
       </AuthUIProvider>
