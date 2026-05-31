@@ -10,3 +10,6 @@ dist
 *.log
 tsconfig.tsbuildinfo
 .vercel
+
+# local-only: the take-home brief, not part of the repo
+assignment/interview.md
