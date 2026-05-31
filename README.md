@@ -12,30 +12,46 @@ Built for an engineering take-home assignment.
 | ----------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`        | Next.js 16 (Turbopack) + shadcn/ui + Tailwind 4 + TanStack Query + better-auth-ui                                     | The interviewer said React + TS. Started from the [shadcnstore dashboard + landing template](https://github.com/shadcnstore/shadcn-dashboard-landing-template). |
 | `apps/backend`    | Cloudflare Worker + [Hono](https://hono.dev/) + Kysely + node-pg + better-auth + `ai` v6 + `@ai-sdk/anthropic`        | One Worker, one PG pool, fully typed RPC into the web via `hc<AppType>`.                                                                                        |
-| DB                | Neon Postgres (pooled at runtime, direct for DDL)                                                                     | Serverless PG; migrations and codegen need the non-pooled endpoint.                                                                                             |
+| DB                | Postgres 16 — Docker locally, Neon for the deployed demo                                                              | Plain `pg` over TCP. Local dev is self-contained in Docker; the prod URLs live in Cloudflare Worker secrets, not in this repo.                                   |
 | Files             | Cloudflare R2 (simulated locally by Miniflare)                                                                        | Cheap, S3-shaped object storage co-located with the Worker.                                                                                                     |
 | LLM               | Claude Sonnet 4.6 via `@ai-sdk/anthropic`                                                                             | Reads the PDF directly as a `file` content block — no pdf-parse step.                                                                                           |
 | Types DB→frontend | `kysely-codegen` → `apps/backend/src/db.types.ts` → `Kysely<DB>` → Hono `AppType` → `hc<AppType>` → react-query hooks | Schema change ⇒ run codegen ⇒ every call site re-types itself.                                                                                                  |
 
 ## Run it
 
+### Prerequisites
+
+- **Node 20+** and **pnpm 9** (the repo pins `pnpm@9.12.3`; `corepack enable` will pick it up).
+- **Docker** — local Postgres runs in a container.
+- An **Anthropic API key** for the parse step.
+
+### Setup
+
 ```bash
 pnpm install
-
 cp apps/backend/.dev.vars.example apps/backend/.dev.vars
-#   fill in:
-#     DATABASE_URL          (Neon pooled)
-#     DATABASE_URL_DIRECT   (Neon non-pooled — same string minus `-pooler`)
-#     BETTER_AUTH_SECRET    (`openssl rand -hex 32`)
-#     ANTHROPIC_API_KEY     (sk-ant-…)
-
-pnpm --filter @accountly/backend db:migrate   # creates auth + bill tables
-pnpm --filter @accountly/backend db:codegen   # writes apps/backend/src/db.types.ts
-
-pnpm dev                                       # backend :8787, web :5001
 ```
 
+`.dev.vars.example` points at the Dockerised Postgres on `127.0.0.1:5433`. Two values to fill in:
+
+```bash
+BETTER_AUTH_SECRET=...     # openssl rand -hex 32
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Start it
+
+```bash
+pnpm dev
+```
+
+Boots Postgres in Docker (`--wait` until healthy), applies migrations, regenerates `db.types.ts`, then runs the backend on `:8787` and the web app on `:5001` in parallel. On the next boot just rerun it — the named volume keeps your data. `pnpm db:down` stops the container.
+
+### Try it
+
 Open http://localhost:5001, sign up, you'll land on `/bills`. Click **Upload PDF**, drop `assignment/simple_invoice.pdf`, wait ~10s — the journal entry proposal renders with balanced postings and the LLM's reasoning paragraph.
+
+> The deployed demo runs against Neon; those URLs live in Cloudflare Worker secrets, not in this repo. You don't need them to run locally.
 
 ## Project layout
 
@@ -136,17 +152,18 @@ To **inspect** the agent on an arbitrary PDF while iterating: `pnpm --filter @ac
 
 | Command                                        | What                                      |
 | ---------------------------------------------- | ----------------------------------------- |
-| `pnpm dev`                                     | Worker :8787 + Next :5001                 |
+| `pnpm dev`                                     | Docker PG up → migrate → codegen → Worker :8787 + Next :5001 |
+| `pnpm db:up` / `pnpm db:down`                  | Start / stop the local Postgres container |
 | `pnpm typecheck`                               | Both apps                                 |
 | `pnpm --filter @accountly/backend test`        | Deterministic unit tests (no API)         |
 | `pnpm --filter @accountly/backend test:evals`  | Scenario regression evals (real model)    |
 | `pnpm --filter @accountly/backend parse <pdf>` | Inspect the agent on one PDF              |
 | `pnpm format` / `pnpm format:check`            | Prettier write / verify                   |
 | `pnpm check`                                   | `typecheck && format:check`               |
-| `pnpm --filter @accountly/backend db:migrate`  | Apply all migrations to Neon (direct URL) |
+| `pnpm --filter @accountly/backend db:migrate`  | Apply all migrations (uses `DATABASE_URL_DIRECT`) |
 | `pnpm --filter @accountly/backend db:rollback` | Walk one migration down                   |
 | `pnpm --filter @accountly/backend db:reset`    | Down → up (dev only)                      |
-| `pnpm --filter @accountly/backend db:codegen`  | Introspect Neon → write `src/db.types.ts` |
+| `pnpm --filter @accountly/backend db:codegen`  | Introspect the DB → write `src/db.types.ts` |
 
 ## Architecture notes worth a tour
 

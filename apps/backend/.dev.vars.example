@@ -1,18 +1,14 @@
-# Copy to .dev.vars (gitignored).
+# Copy to .dev.vars (gitignored). Local dev defaults — production secrets
+# live in Cloudflare Worker / Vercel env, not here.
 
-# Pooled — used by the Worker at runtime. Cloudflare can't hold PG connections,
-# so all production reads/writes go through Neon's PgBouncer.
-DATABASE_URL=postgresql://USER:PASS@ep-xxxxxxxx-pooler.REGION.aws.neon.tech/DB?sslmode=require&channel_binding=require
+# Local Postgres (Docker) — boots automatically as part of `pnpm dev`.
+DATABASE_URL=postgres://accountly:accountly@127.0.0.1:5433/accountly
+DATABASE_URL_DIRECT=postgres://accountly:accountly@127.0.0.1:5433/accountly
 
-# Direct — used by Kysely migrations and `kysely-codegen`. PgBouncer transaction
-# mode breaks some DDL and `pg_catalog` introspection; run schema work on the
-# direct endpoint (same host minus `-pooler`).
-DATABASE_URL_DIRECT=postgresql://USER:PASS@ep-xxxxxxxx.REGION.aws.neon.tech/DB?sslmode=require&channel_binding=require
-
-# better-auth
+# better-auth — any random hex string works locally (`openssl rand -hex 32`).
 BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:8787
 APP_URL=http://localhost:5001
 
-# Anthropic — used by the `ai` SDK for invoice → journal entry
+# Anthropic — used by the `ai` SDK for invoice → journal entry.
 ANTHROPIC_API_KEY=

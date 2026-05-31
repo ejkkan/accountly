@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "pnpm -r --parallel --stream dev",
+    "dev": "docker compose -f apps/backend/docker-compose.yml up -d --wait && pnpm --filter @accountly/backend db:migrate && pnpm --filter @accountly/backend db:codegen && pnpm -r --parallel --stream dev",
     "dev:web": "pnpm --filter web dev",
     "dev:backend": "pnpm --filter @accountly/backend dev",
+    "db:up": "docker compose -f apps/backend/docker-compose.yml up -d --wait",
+    "db:down": "docker compose -f apps/backend/docker-compose.yml down",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",
