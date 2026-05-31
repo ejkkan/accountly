@@ -27,12 +27,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL("/auth/sign-in", request.url));
   }
 
-  // better-auth's get-session returns the raw text "null" (not a JSON null)
-  // when there's no session. Check the text shape directly — `await res.json()`
-  // on "null" was returning the literal string in this Next + undici combo,
-  // so the simpler text comparison is more reliable.
-  const text = await res.text();
-  if (text === "" || text === "null") {
+  // better-auth returns JSON `null` (200) when there is no session.
+  const session = (await res.json()) as { user?: { id: string } } | null;
+  if (!session || !session.user) {
     return NextResponse.redirect(new URL("/auth/sign-in", request.url));
   }
 
