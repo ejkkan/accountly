@@ -60,16 +60,20 @@ apps/
     │   ├── auth.ts                 better-auth + organization plugin
     │   ├── db.ts                   pg Pool + Kysely + DATE OID parser
     │   ├── middleware/auth.ts      Session → c.set("userId" | "organizationId" | "db")
-    │   ├── routes/bills.ts         POST/GET/GET:id/GET:id/file
+    │   ├── routes/bills.ts         upload / list / detail / file / approve / decline / reparse / delete
     │   └── lib/
     │       ├── coa.ts              BAS kontoplan as const
-    │       ├── journal-schema.ts   Zod schema + balance refinement
-    │       └── parse-bill.ts       generateObject({ model, schema, messages: [...PDF] })
+    │       ├── journal-schema.ts   Zod discriminated-union schema + inferred types
+    │       ├── validate-proposal.ts  accounting rules: balance / XOR / known accounts
+    │       ├── bill-states.ts      pending → approved/declined state machine
+    │       └── parse-bill.ts       generateObject({ schema, messages: [...PDF] })
     ├── migrations/
     │   ├── 0001_auth.ts            better-auth schema (hand-translated)
     │   └── 0002_bills.ts           bill / lineItem / journalEntry / posting
+    ├── evals/                      scenario regression suite — fixtures.ts + scenarios.ts
     └── scripts/
         ├── migrate.ts              Kysely Migrator runner
+        ├── parse-pdf.ts            inspect the agent on one PDF
         └── codegen.ts              kysely-codegen wrapper (--date-parser string)
 ```
 
@@ -77,19 +81,43 @@ apps/
 
 `POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts.
 
-**Structured output, two layers:**
+**Two layers — the model proposes, code validates:**
 
-1. **Forced tool call** — `generateObject` translates the Zod schema → JSON Schema → Anthropic tool definition with `tool_choice` set to that tool. Claude is _required_ to return output matching the schema; the API rejects invalid tool inputs. No "model returned almost-valid JSON" failure mode.
-2. **Zod refinements** validate once more on the way out:
+1. **Forced structured output** — `generateObject` turns the Zod schema into a JSON Schema, hands it to Anthropic as a forced tool, and validates the response back against the schema. Claude is _required_ to return data matching the shape, and a malformed reply throws rather than flowing through untyped. The result is a typed discriminated union.
+2. **`validateProposal` (`lib/validate-proposal.ts`)** — the accounting rules, in plain code, independent of the prompt and unit-tested. It's the hard gate before persisting:
+   - total debits === total credits (in integer öre, so the sum is exact)
    - every posting moves money exactly one direction (debit XOR credit)
-   - total debits === total credits
    - every `accountCode` is one of the 20 BAS codes
 
-**Determinism.** `temperature: 0` (greedy decoding) so the same PDF produces the same proposal — same account mappings, same reasoning prose. Anthropic doesn't expose `seed`, so true bit-exact repeatability is off the table, but for practical purposes the model now behaves like a function of the document. For an accounting tool this is the right contract — the accountant trusts the output is a deterministic projection of the source, not "what mood the model is in."
+   Keeping the rules out of the schema gives a single, testable source of truth for "is this entry valid," with specific errors; an invalid proposal is rejected with a 422 and never stored.
 
-**Discriminated rejection.** Output is a Zod discriminated union — Claude can return `{ kind: "not_an_invoice", reason, detail }` instead of hallucinating an extraction when the PDF is a receipt, a contract, an unreadable scan, or in the wrong currency. The route handler translates that to a 422 `parse_<reason>` AppError carrying Claude's own one-sentence explanation, which the frontend toasts verbatim.
+**Determinism.** `temperature: 0` (greedy decoding) so the same PDF produces the same proposal — same account mappings, same reasoning. Anthropic doesn't expose `seed`, so true bit-exact repeatability is off the table, but in practice the model behaves like a function of the document. For an accounting tool that's the right contract — and it's what makes the regression evals (below) reliable.
+
+**Discriminated rejection.** The output union has a second case — `{ kind: "not_an_invoice", detail }` — so when the PDF is a receipt, a brochure, or an unreadable scan, the model says so instead of hallucinating an entry. The route returns a 422 carrying that one-sentence `detail`, which the UI surfaces. (Foreign-currency invoices are _not_ auto-rejected: the assignment centers the accountant's approve/decline decision, so a non-SEK invoice produces a proposal the accountant can decline rather than being refused for them.)
 
 Bill + line items + journal entry + postings are persisted in a single Kysely transaction.
+
+## Testing
+
+An LLM feature has two things that can break — the code around the model, and the model's output — so there are two layers:
+
+1. **Deterministic unit tests** — `pnpm --filter @accountly/backend test`. Cover `validateProposal` (balance, debit/credit XOR, unknown account, too-few-postings) with canned proposals. No network, no API key, instant — this is what guards the booking rules.
+
+2. **Scenario regression evals** — `pnpm --filter @accountly/backend test:evals`. A golden corpus (`evals/scenarios.ts`) that runs the **real model** through `parseBill` and asserts stable accounting properties on the output:
+
+   | Scenario                                | Asserts                                 |
+   | --------------------------------------- | --------------------------------------- |
+   | `happy-standard` (the provided invoice) | proposes a balanced entry; credits 2440 |
+   | `vat-exempt` (0% invoice)               | no 2640 posting                         |
+   | `credit-note` (kreditfaktura)           | flipped — debits 2440                   |
+   | `account-mapping` (rent)                | maps to 5010; VAT to 2640               |
+   | `reject-non-invoice` (meeting notes)    | returns `not_an_invoice`                |
+
+   Fixtures are generated from declarative data with `pdf-lib` (`evals/fixtures.ts`) — reviewable in the repo, with known expected values, so the assertions are exact and temperature-0 runs are stable rather than flaky. Opt-in (reads `ANTHROPIC_API_KEY` from `.dev.vars`) so the unit run stays free.
+
+   **Growing the corpus is the point:** add a fixture + a scenario row → re-run → if a prompt change regresses an existing case it fails. That's how you'd add support for a new invoice format without quietly breaking the others.
+
+To **inspect** the agent on an arbitrary PDF while iterating: `pnpm --filter @accountly/backend parse path/to/invoice.pdf` prints the extraction, the proposed postings, the balance/validation result, and the model's reasoning.
 
 ## Scripts
 
@@ -97,6 +125,9 @@ Bill + line items + journal entry + postings are persisted in a single Kysely tr
 | ---------------------------------------------- | ----------------------------------------- |
 | `pnpm dev`                                     | Worker :8787 + Next :5001                 |
 | `pnpm typecheck`                               | Both apps                                 |
+| `pnpm --filter @accountly/backend test`        | Deterministic unit tests (no API)         |
+| `pnpm --filter @accountly/backend test:evals`  | Scenario regression evals (real model)    |
+| `pnpm --filter @accountly/backend parse <pdf>` | Inspect the agent on one PDF              |
 | `pnpm format` / `pnpm format:check`            | Prettier write / verify                   |
 | `pnpm check`                                   | `typecheck && format:check`               |
 | `pnpm --filter @accountly/backend db:migrate`  | Apply all migrations to Neon (direct URL) |
@@ -120,7 +151,7 @@ Bill + line items + journal entry + postings are persisted in a single Kysely tr
 - **Inline posting editing.** Assignment text only asks for approve/decline. Editing is an obvious live-interview extension hook.
 - **Org switcher.** Auto-created personal org is invisible in the UI.
 - **Email verification / 2FA / OAuth.** Email + password only.
-- **Tests.** Not required; structure is small enough that an interviewer can read the routes top-to-bottom.
+- **Duplicate detection / supplier matching.** A real AP tool dedups on the invoice's _identity_ — `(supplier, invoice number)` — because the same invoice arrives as different files; a naive file-hash would catch the wrong thing. Beyond the assignment, so deliberately out of scope (and noted here rather than half-built).
 - **Wrangler v4.** Stayed on v3 to avoid an unrelated config churn mid-build.
 
 ## What I'd do with more time
@@ -146,4 +177,5 @@ Bill + line items + journal entry + postings are persisted in a single Kysely tr
 - **Inline posting editing** on `/bills/[id]` — assignment only asks for approve/decline; editing is the obvious next step and the JournalEntryCard would gain a per-row edit mode.
 - **Org switcher** — auto-created personal org is invisible today; a real product needs the switcher in the sidebar.
 - **Retry-with-context on Re-parse** — pass the previous attempt's failure reason back to the LLM so it doesn't make the same mistake twice.
-- **Tests** — small enough surface that a few integration tests on `POST /bills` + `journal-schema` Zod refinements would cover the load-bearing logic without exploding the codebase.
+- **Route-level integration tests** — stub the model and assert `POST /bills` persists the bill + postings (and that a `not_an_invoice` 422s). The unit tests cover the validator and the evals cover the model's output; route tests would round out the middle.
+- **Invoice-identity dedup** — `(supplier, invoice number)` matching to flag a re-submitted invoice (see "what's not built").
