@@ -5,6 +5,7 @@ import type { Env } from "../index";
 import { parseBill } from "../lib/parse-bill";
 import { validateProposal } from "../lib/validate-proposal";
 import { accountName } from "../lib/coa";
+import { findOrCreateSupplier } from "../lib/suppliers";
 import { log, startTimer } from "../lib/log";
 import { BadRequest, Conflict, NotFound, Unprocessable, Upstream } from "../lib/errors";
 import { assertCan, permissionsFor } from "../lib/bill-states";
@@ -159,19 +160,21 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     const bills = await db
       .selectFrom("bill")
+      .leftJoin("supplier", "supplier.id", "bill.supplierId")
       .select([
-        "id",
-        "fileName",
-        "status",
-        "supplierName",
-        "invoiceNumber",
-        "invoiceDate",
-        "currency",
-        "totalMinor",
-        "createdAt",
+        "bill.id",
+        "bill.fileName",
+        "bill.status",
+        // Supplier name comes from the joined entity, not a column on bill.
+        "supplier.name as supplierName",
+        "bill.invoiceNumber",
+        "bill.invoiceDate",
+        "bill.currency",
+        "bill.totalMinor",
+        "bill.createdAt",
       ])
-      .where("organizationId", "=", organizationId)
-      .orderBy("createdAt", "desc")
+      .where("bill.organizationId", "=", organizationId)
+      .orderBy("bill.createdAt", "desc")
       .execute();
 
     return c.json({ bills });
@@ -246,6 +249,13 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     const persistTimer = startTimer();
     await db.transaction().execute(async (trx) => {
+      // Resolve the extracted vendor to a canonical supplier row (reuse on
+      // matching org.nr / VAT / name, else create) and store only the link.
+      const supplierId = await findOrCreateSupplier(trx, organizationId, {
+        name: parsed.extracted.supplierName,
+        orgNumber: parsed.extracted.supplierOrgNumber,
+        vatNumber: parsed.extracted.supplierVatNumber,
+      });
       await trx
         .insertInto("bill")
         .values({
@@ -256,7 +266,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
           fileName,
           status: "pending",
           currency: parsed.extracted.currency,
-          supplierName: parsed.extracted.supplierName,
+          supplierId,
           invoiceNumber: parsed.extracted.invoiceNumber,
           invoiceDate: parsed.extracted.invoiceDate,
           dueDate: parsed.extracted.dueDate,
@@ -322,22 +332,36 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
           .execute()
       : [];
 
-    // Surface supplier tax identifiers next to the rest of the extracted
-    // header fields. They live inside the rawExtract jsonb blob today (see
-    // ExtractedBill in lib/journal-schema.ts); promoting them to top-level
-    // bill columns is the next step when the supplier-entity work lands.
-    // Older bills parsed before this field existed return null naturally.
-    const taxIds = (bill.rawExtract ?? null) as {
-      supplierOrgNumber?: string | null;
-      supplierVatNumber?: string | null;
-    } | null;
+    // The canonical supplier (name + tax identifiers) and how many OTHER bills
+    // in this workspace point at the same vendor — surfaced as a small
+    // "N other bills from this supplier" line on the detail page.
+    const supplier = bill.supplierId
+      ? ((await db
+          .selectFrom("supplier")
+          .select(["id", "name", "orgNumber", "vatNumber"])
+          .where("id", "=", bill.supplierId)
+          .where("organizationId", "=", organizationId)
+          .executeTakeFirst()) ?? null)
+      : null;
+
+    const supplierBillCount = bill.supplierId
+      ? Number(
+          (
+            await db
+              .selectFrom("bill")
+              .select((eb) => eb.fn.countAll().as("count"))
+              .where("supplierId", "=", bill.supplierId)
+              .where("organizationId", "=", organizationId)
+              .where("id", "<>", id)
+              .executeTakeFirst()
+          )?.count ?? 0
+        )
+      : 0;
 
     return c.json({
-      bill: {
-        ...bill,
-        supplierOrgNumber: taxIds?.supplierOrgNumber ?? null,
-        supplierVatNumber: taxIds?.supplierVatNumber ?? null,
-      },
+      bill,
+      supplier,
+      supplierBillCount,
       lineItems,
       journalEntry: journalEntry ?? null,
       postings,
@@ -416,12 +440,17 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       await trx.deleteFrom("journalEntry").where("billId", "=", id).execute();
       await trx.deleteFrom("billLineItem").where("billId", "=", id).execute();
 
+      const supplierId = await findOrCreateSupplier(trx, organizationId, {
+        name: parsed.extracted.supplierName,
+        orgNumber: parsed.extracted.supplierOrgNumber,
+        vatNumber: parsed.extracted.supplierVatNumber,
+      });
       await trx
         .updateTable("bill")
         .set({
           status: "pending",
           currency: parsed.extracted.currency,
-          supplierName: parsed.extracted.supplierName,
+          supplierId,
           invoiceNumber: parsed.extracted.invoiceNumber,
           invoiceDate: parsed.extracted.invoiceDate,
           dueDate: parsed.extracted.dueDate,

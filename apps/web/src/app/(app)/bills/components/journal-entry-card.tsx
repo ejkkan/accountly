@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react";
 import type { InferResponseType } from "hono/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import {
   Table,
   TableBody,
@@ -171,18 +171,4 @@ function decidedLine(je: JournalEntry): string {
   const by = je.decidedByName ? ` by ${je.decidedByName}` : "";
   const on = je.decidedAt ? ` on ${new Date(je.decidedAt).toLocaleDateString("sv-SE")}` : "";
   return `${verb}${by}${on}`;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cls =
-    status === "approved"
-      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
-      : status === "declined"
-        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-        : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
-  return (
-    <Badge variant="outline" className={cls}>
-      {status}
-    </Badge>
-  );
 }

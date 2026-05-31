@@ -16,6 +16,9 @@ export function useDeleteBill() {
       toast.success("Bill deleted.");
       qc.invalidateQueries({ queryKey: ["bills"] });
       qc.removeQueries({ queryKey: ["bills", id] });
+      // Deleting a bill changes its supplier's invoice count — refresh the
+      // directory + any open supplier detail (shared root key).
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
     },
   });
 }

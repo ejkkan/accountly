@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { FileText, Upload } from "lucide-react";
+import { Building2, FileText, Upload } from "lucide-react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 
@@ -32,6 +32,11 @@ const data = {
           title: "Bills",
           url: "/bills",
           icon: FileText,
+        },
+        {
+          title: "Suppliers",
+          url: "/suppliers",
+          icon: Building2,
         },
         {
           title: "Upload",

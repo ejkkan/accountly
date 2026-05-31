@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { InferResponseType } from "hono/client";
 import { api } from "@/lib/client";
 
@@ -18,29 +19,39 @@ import { api } from "@/lib/client";
 type UploadResponse = InferResponseType<(typeof api.api.bills)["$post"]>;
 
 export function useUploadBill() {
+  const qc = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
 
-  const upload = useCallback(async (file: File): Promise<UploadResponse> => {
-    setIsUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/bills", {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
-        throw new Error(body?.error?.message ?? `Upload failed (${res.status}).`);
+  const upload = useCallback(
+    async (file: File): Promise<UploadResponse> => {
+      setIsUploading(true);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/bills", {
+          method: "POST",
+          body: form,
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: { message?: string };
+          } | null;
+          throw new Error(body?.error?.message ?? `Upload failed (${res.status}).`);
+        }
+        const data = (await res.json()) as UploadResponse;
+        // A successful upload always adds a bill and may have created a new
+        // supplier (find-or-create) — refresh both lists so the new rows show
+        // without a manual reload.
+        qc.invalidateQueries({ queryKey: ["bills"] });
+        qc.invalidateQueries({ queryKey: ["suppliers"] });
+        return data;
+      } finally {
+        setIsUploading(false);
       }
-      return (await res.json()) as UploadResponse;
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
+    },
+    [qc]
+  );
 
   return { upload, isUploading };
 }

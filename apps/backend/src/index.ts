@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createAuth } from "./auth";
 import { createDb } from "./db";
 import { billsRoutes } from "./routes/bills";
+import { suppliersRoutes } from "./routes/suppliers";
 import { AppError } from "./lib/errors";
 import { log } from "./lib/log";
 
@@ -37,6 +38,7 @@ const app = new Hono<{ Bindings: Env }>()
     return auth.handler(c.req.raw);
   })
   .route("/api/bills", billsRoutes)
+  .route("/api/suppliers", suppliersRoutes)
 
   // Single source of truth for the error wire-format. `AppError` carries
   // status/code/message itself; anything else becomes `internal` 500.

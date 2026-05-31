@@ -57,7 +57,7 @@ export interface Bill {
   rawExtract: Json | null;
   status: Generated<string>;
   subtotalMinor: Int8 | null;
-  supplierName: string | null;
+  supplierId: string | null;
   totalMinor: Int8 | null;
   uploadedByUserId: string;
   vatMinor: Int8 | null;
@@ -132,6 +132,16 @@ export interface Session {
   userId: string;
 }
 
+export interface Supplier {
+  createdAt: Generated<Timestamp>;
+  id: string;
+  name: string;
+  organizationId: string;
+  orgNumber: string | null;
+  updatedAt: Generated<Timestamp>;
+  vatNumber: string | null;
+}
+
 export interface User {
   createdAt: Generated<Timestamp>;
   email: string;
@@ -161,6 +171,7 @@ export interface DB {
   member: Member;
   organization: Organization;
   session: Session;
+  supplier: Supplier;
   user: User;
   verification: Verification;
 }

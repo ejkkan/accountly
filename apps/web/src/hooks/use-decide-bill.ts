@@ -24,6 +24,9 @@ function makeDecider(action: "approve" | "decline") {
         toast.success(successText);
         qc.invalidateQueries({ queryKey: ["bills"] });
         qc.invalidateQueries({ queryKey: ["bills", id] });
+        // The supplier detail page shows each bill's status — refresh it
+        // (shared root key covers list + detail).
+        qc.invalidateQueries({ queryKey: ["suppliers"] });
       },
     });
   };

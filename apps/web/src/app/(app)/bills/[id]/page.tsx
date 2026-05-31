@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/status-badge";
 import { ErrorCard } from "@/components/ui/error-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBill } from "@/hooks/use-bill";
@@ -30,7 +30,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
   const reparse = useReparseBill();
   const remove = useDeleteBill();
 
-  const supplierName = data?.bill.supplierName ?? data?.bill.fileName ?? "Bill";
+  const supplierName = data?.supplier?.name ?? data?.bill.fileName ?? "Bill";
   const busy = reparse.isPending || remove.isPending;
 
   async function onReparse() {
@@ -133,9 +133,9 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                 </CardHeader>
                 <CardContent>
                   <dl className="grid grid-cols-2 gap-y-3 text-sm">
-                    <Row label="Supplier" value={data.bill.supplierName} />
-                    <Row label="Org. nr" value={data.bill.supplierOrgNumber} />
-                    <Row label="VAT nr" value={data.bill.supplierVatNumber} />
+                    <Row label="Supplier" value={data.supplier?.name ?? null} />
+                    <Row label="Org. nr" value={data.supplier?.orgNumber ?? null} />
+                    <Row label="VAT nr" value={data.supplier?.vatNumber ?? null} />
                     <Row label="Invoice #" value={data.bill.invoiceNumber} />
                     <Row label="Date" value={data.bill.invoiceDate} />
                     <Row label="Due" value={data.bill.dueDate} />
@@ -164,6 +164,12 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                       }
                     />
                   </dl>
+                  {data.supplierBillCount > 0 && (
+                    <p className="mt-4 text-xs text-muted-foreground">
+                      {data.supplierBillCount} other{" "}
+                      {data.supplierBillCount === 1 ? "bill" : "bills"} from this supplier
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
@@ -285,19 +291,5 @@ function BillDetailSkeleton() {
         </Card>
       </div>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cls =
-    status === "approved"
-      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
-      : status === "declined"
-        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-        : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
-  return (
-    <Badge variant="outline" className={cls}>
-      {status}
-    </Badge>
   );
 }

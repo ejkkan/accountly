@@ -16,6 +16,9 @@ export function useReparseBill() {
       toast.success("Re-parsed.");
       qc.invalidateQueries({ queryKey: ["bills"] });
       qc.invalidateQueries({ queryKey: ["bills", id] });
+      // Re-parse can re-resolve the supplier — refresh the directory + any
+      // open supplier detail (shared root key).
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
     },
   });
 }
