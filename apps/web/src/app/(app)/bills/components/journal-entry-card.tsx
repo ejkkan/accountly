@@ -35,14 +35,15 @@ export interface JournalEntry {
 
 /**
  * Card form of the proposed journal entry. Lays out:
- *  - status badge in the header
+ *  - Approve / Decline buttons OR a status badge in the header (depending
+ *    on whether `journalEntry.status === "proposed"`)
  *  - postings table (Account | Debit | Credit) sorted by lineNo
  *  - totals row that visibly proves debits === credits
  *  - rationale paragraph at the bottom
  *
- * If approval buttons land in phase 6 they wire into the header — keeping
- * the table read-only here so the live-interview ask ("let the accountant
- * edit a posting") has somewhere obvious to land.
+ * The table is intentionally read-only — inline posting editing is the
+ * obvious live-interview extension and would mount in place of the
+ * static cells without disturbing the rest of the card.
  */
 export function JournalEntryCard({
   billId,
