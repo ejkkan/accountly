@@ -4,6 +4,8 @@ Upload a Swedish PDF invoice → Accountly AI proposes a balanced double-entry j
 
 Built for an engineering take-home assignment.
 
+**Live demo:** **[web-ikuzo-ab.vercel.app](https://web-ikuzo-ab.vercel.app)** — sign up with any email + password, then upload `assignment/simple_invoice.pdf`. (Next.js on Vercel; the API is a Cloudflare Worker reached through a same-origin `/api/*` proxy.)
+
 ## Stack
 
 | Layer             | What                                                                                                                  | Why                                                                                                                                                             |
@@ -45,7 +47,8 @@ apps/
 │   │   │   ├── page.tsx            Landing
 │   │   │   ├── auth/[pathname]     better-auth-ui catch-all
 │   │   │   └── (app)/              Session-gated by proxy.ts
-│   │   │       └── bills/          List + new + detail
+│   │   │       ├── bills/          List + new + detail
+│   │   │       └── suppliers/      Directory + per-supplier invoices
 │   │   ├── components/             Template's sidebar/header reused
 │   │   ├── hooks/                  react-query wrappers over the typed RPC client
 │   │   ├── lib/
@@ -60,16 +63,20 @@ apps/
     │   ├── auth.ts                 better-auth + organization plugin
     │   ├── db.ts                   pg Pool + Kysely + DATE OID parser
     │   ├── middleware/auth.ts      Session → c.set("userId" | "organizationId" | "db")
-    │   ├── routes/bills.ts         upload / list / detail / file / approve / decline / reparse / delete
+    │   ├── routes/
+    │   │   ├── bills.ts            upload / list / detail / file / approve / decline / reparse / delete
+    │   │   └── suppliers.ts        supplier directory + one vendor's bills
     │   └── lib/
     │       ├── coa.ts              BAS kontoplan as const
     │       ├── journal-schema.ts   Zod discriminated-union schema + inferred types
     │       ├── validate-proposal.ts  accounting rules: balance / XOR / known accounts
+    │       ├── suppliers.ts        find-or-create supplier (org.nr → VAT → name)
     │       ├── bill-states.ts      pending → approved/declined state machine
-    │       └── parse-bill.ts       generateObject({ schema, messages: [...PDF] })
+    │       └── parse-bill.ts       generateText + Output.object({ schema }) over the PDF
     ├── migrations/
     │   ├── 0001_auth.ts            better-auth schema (hand-translated)
-    │   └── 0002_bills.ts           bill / lineItem / journalEntry / posting
+    │   ├── 0002_bills.ts           bill / lineItem / journalEntry / posting
+    │   └── 0003_suppliers.ts       supplier entity + bill.supplierId
     ├── evals/                      scenario regression suite — fixtures.ts + scenarios.ts
     └── scripts/
         ├── migrate.ts              Kysely Migrator runner
@@ -79,11 +86,11 @@ apps/
 
 ## What the LLM does
 
-`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts. The prompt structure (XML-tagged sections, two few-shot examples, normal-register instructions) follows [Anthropic's prompting best practices for Claude 4.6](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) — the rationale lives in a comment above `SYSTEM_PROMPT` in [`parse-bill.ts`](apps/backend/src/lib/parse-bill.ts).
+`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateText` with an `Output.object({ schema })` — passing the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts. The prompt structure (XML-tagged sections, two few-shot examples, normal-register instructions) follows [Anthropic's prompting best practices for Claude 4.6](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) — the rationale lives in a comment above `SYSTEM_PROMPT` in [`parse-bill.ts`](apps/backend/src/lib/parse-bill.ts).
 
 **Two layers — the model proposes, code validates:**
 
-1. **Forced structured output** — `generateObject` turns the Zod schema into a JSON Schema, hands it to Anthropic as a forced tool, and validates the response back against the schema. Claude is _required_ to return data matching the shape, and a malformed reply throws rather than flowing through untyped. The result is a typed discriminated union.
+1. **Forced structured output** — `generateText` with `Output.object` turns the Zod schema into a JSON Schema, hands it to Anthropic as a forced tool, and validates the response back against the schema. Claude is _required_ to return data matching the shape, and a malformed reply throws rather than flowing through untyped. The result is a typed discriminated union.
 2. **`validateProposal` (`lib/validate-proposal.ts`)** — the accounting rules, in plain code, independent of the prompt and unit-tested. It's the hard gate before persisting:
    - total debits === total credits (in integer öre, so the sum is exact)
    - every posting moves money exactly one direction (debit XOR credit)
@@ -96,6 +103,12 @@ apps/
 **Discriminated rejection.** The output union has a second case — `{ kind: "not_an_invoice", detail }` — so when the PDF is a receipt, a brochure, or an unreadable scan, the model says so instead of hallucinating an entry. The route returns a 422 carrying that one-sentence `detail`, which the UI surfaces. (Foreign-currency invoices are _not_ auto-rejected: the assignment centers the accountant's approve/decline decision, so a non-SEK invoice produces a proposal the accountant can decline rather than being refused for them.)
 
 Bill + line items + journal entry + postings are persisted in a single Kysely transaction.
+
+## Suppliers
+
+The agent extracts the vendor's name + org.nr + VAT from the PDF; deterministic code (`lib/suppliers.ts`) resolves that to a canonical, org-scoped `supplier` row — **find-or-create**, matching on **org.nr → VAT → case-insensitive name**, enriching only the identifiers a supplier is missing (never overwriting a known one). The bill stores just `supplierId`; name / org.nr / VAT load from the entity, so there's a single source of truth for who the vendor is.
+
+Two invoices from the same vendor therefore link to one supplier — surfaced on the **Suppliers** page (each unique vendor + its invoice count) and on the bill detail ("N other bills from this supplier"). It's the same split as the journal entry: the **model perceives** (fuzzy PDF reading), **code decides identity** (deterministic, unit-tested matching) — the LLM never decides whether two bills are the same vendor.
 
 ## Testing
 
@@ -151,8 +164,8 @@ To **inspect** the agent on an arbitrary PDF while iterating: `pnpm --filter @ac
 - **Inline posting editing.** Assignment text only asks for approve/decline. Editing is an obvious live-interview extension hook.
 - **Org switcher.** Auto-created personal org is invisible in the UI.
 - **Email verification / 2FA / OAuth.** Email + password only.
-- **Supplier as its own entity.** The supplier is a denormalized `supplierName` text field on the `bill`, not a normalized table. Two invoices from the same vendor are only "linked" by an identical name string — there's no supplier record, no `(org.nr / VAT)` key, no FK. That's a deliberate layering call: the assignment asks for the **journal-entry** layer (invoice → balanced entry → approve/decline), and a supplier master is the **accounts-payable subledger** above it — the same layer the general ledger lives in, which we also don't build. A real version would be a small `supplier` table (`name`, nullable `orgNumber` / `vatNumber`, partial-unique on each identifier), a find-or-create match by org.nr → VAT → name, and a `bill.supplierId` FK _plus_ snapshot columns (so renaming a supplier later doesn't rewrite an old invoice's history). ~½ day, and the type-driven workflow (migrate → codegen → the compiler lists the touch-points) makes it mechanical — left as an obvious live-interview feature rather than half-built.
-- **Duplicate detection / supplier matching.** A real AP tool dedups on the invoice's _identity_ — `(supplier, invoice number)` — because the same invoice arrives as different files; a naive file-hash would catch the wrong thing. Builds on the supplier entity above, so likewise out of scope (and noted here rather than half-built).
+- **Duplicate detection.** Suppliers _are_ deduplicated (see [Suppliers](#suppliers) — org.nr → VAT → name), but invoices aren't: a real AP tool also dedups on invoice _identity_ — `(supplier, invoice number)` — to catch the same bill re-uploaded as a different file (a naive file-hash would catch the wrong thing). The supplier entity it'd build on now exists; the invoice-level check is the remaining piece, left out as beyond the assignment.
+- **General ledger / AP subledger reporting.** We model the supplier directory and the per-invoice journal entry, but not the aggregating layer above them — account balances, a trial balance, supplier-level payables totals. That (and the multi-currency conversion it would force) is a whole feature area the assignment doesn't ask for.
 - **Wrangler v4.** Stayed on v3 to avoid an unrelated config churn mid-build.
 
 ## What I'd do with more time
