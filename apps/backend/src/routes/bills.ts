@@ -322,8 +322,22 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
           .execute()
       : [];
 
+    // Surface supplier tax identifiers next to the rest of the extracted
+    // header fields. They live inside the rawExtract jsonb blob today (see
+    // ExtractedBill in lib/journal-schema.ts); promoting them to top-level
+    // bill columns is the next step when the supplier-entity work lands.
+    // Older bills parsed before this field existed return null naturally.
+    const taxIds = (bill.rawExtract ?? null) as {
+      supplierOrgNumber?: string | null;
+      supplierVatNumber?: string | null;
+    } | null;
+
     return c.json({
-      bill,
+      bill: {
+        ...bill,
+        supplierOrgNumber: taxIds?.supplierOrgNumber ?? null,
+        supplierVatNumber: taxIds?.supplierVatNumber ?? null,
+      },
       lineItems,
       journalEntry: journalEntry ?? null,
       postings,

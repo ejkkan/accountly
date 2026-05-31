@@ -35,6 +35,23 @@ export const ExtractedLineItem = z.object({
 
 export const ExtractedBill = z.object({
   supplierName: z.string().nullable(),
+  // Swedish organisationsnummer — 10 digits, canonical "NNNNNN-NNNN".
+  // Accepts the bare 10-digit form too since invoices print both ways. Null
+  // when the supplier isn't Swedish or the number isn't printed. Captured
+  // here for the deferred supplier-entity work (see README) — flows into
+  // bill.rawExtract today, ready to be promoted to its own column when we
+  // build dedup / supplier matching.
+  supplierOrgNumber: z
+    .string()
+    .regex(/^\d{6}-?\d{4}$/, "10 digits, optional hyphen after the 6th (e.g. 559876-5432)")
+    .nullable(),
+  // Country-prefixed VAT registration number (e.g. SE559876543201, DE123456789).
+  // Distinct from supplierOrgNumber — Swedish VAT is the orgnr's digits with
+  // "SE" prefix and "01" suffix, so the prompt explicitly disambiguates them.
+  supplierVatNumber: z
+    .string()
+    .regex(/^[A-Z]{2}[A-Za-z0-9]+$/, "Country prefix + alphanumeric (e.g. SE559876543201)")
+    .nullable(),
   invoiceNumber: z.string().nullable(),
   invoiceDate: z
     .string()

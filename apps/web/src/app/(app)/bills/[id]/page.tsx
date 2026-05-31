@@ -134,6 +134,8 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                 <CardContent>
                   <dl className="grid grid-cols-2 gap-y-3 text-sm">
                     <Row label="Supplier" value={data.bill.supplierName} />
+                    <Row label="Org. nr" value={data.bill.supplierOrgNumber} />
+                    <Row label="VAT nr" value={data.bill.supplierVatNumber} />
                     <Row label="Invoice #" value={data.bill.invoiceNumber} />
                     <Row label="Date" value={data.bill.invoiceDate} />
                     <Row label="Due" value={data.bill.dueDate} />

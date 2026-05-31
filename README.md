@@ -79,7 +79,7 @@ apps/
 
 ## What the LLM does
 
-`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts.
+`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts. The prompt structure (XML-tagged sections, two few-shot examples, normal-register instructions) follows [Anthropic's prompting best practices for Claude 4.6](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices) — the rationale lives in a comment above `SYSTEM_PROMPT` in [`parse-bill.ts`](apps/backend/src/lib/parse-bill.ts).
 
 **Two layers — the model proposes, code validates:**
 
