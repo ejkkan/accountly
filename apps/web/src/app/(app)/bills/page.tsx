@@ -13,12 +13,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ErrorCard } from "@/components/ui/error-card";
 import { useBills } from "@/hooks/use-bills";
 import { formatMinor } from "@/lib/money";
 import { BillsStatCards, type BillsStats } from "./components/bills-stat-cards";
 
 export default function BillsPage() {
-  const { data, isLoading, error } = useBills();
+  const { data, isLoading, error, refetch } = useBills();
 
   const stats: BillsStats = data
     ? {
@@ -42,7 +43,11 @@ export default function BillsPage() {
       </div>
 
       <div className="@container/main space-y-6 px-4 lg:px-6">
-        <BillsStatCards stats={stats} />
+        {error ? (
+          <ErrorCard message={error.message} onRetry={() => refetch()} />
+        ) : (
+          <BillsStatCards stats={stats} />
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
@@ -59,7 +64,6 @@ export default function BillsPage() {
           </CardHeader>
           <CardContent>
             {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-            {error && <p className="text-sm text-destructive">{error.message}</p>}
 
             {data && data.bills.length === 0 && (
               <div className="rounded-lg border border-dashed py-12 text-center">

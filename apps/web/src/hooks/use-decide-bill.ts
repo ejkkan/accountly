@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/lib/client";
 import { unwrap } from "@/lib/api";
 
@@ -9,6 +10,7 @@ import { unwrap } from "@/lib/api";
  * status both flip immediately after the mutation resolves.
  */
 function makeDecider(action: "approve" | "decline") {
+  const successText = action === "approve" ? "Approved." : "Declined.";
   return function useDecider() {
     const qc = useQueryClient();
     return useMutation({
@@ -19,6 +21,7 @@ function makeDecider(action: "approve" | "decline") {
             : api.api.bills[":id"].decline.$post({ param: { id } })
         ),
       onSuccess: (_, id) => {
+        toast.success(successText);
         qc.invalidateQueries({ queryKey: ["bills"] });
         qc.invalidateQueries({ queryKey: ["bills", id] });
       },

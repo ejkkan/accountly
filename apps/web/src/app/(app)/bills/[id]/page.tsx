@@ -6,13 +6,14 @@ import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ErrorCard } from "@/components/ui/error-card";
 import { useBill } from "@/hooks/use-bill";
 import { formatMinor } from "@/lib/money";
 import { JournalEntryCard } from "../components/journal-entry-card";
 
 export default function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { data, isLoading, error } = useBill(id);
+  const { data, isLoading, error, refetch } = useBill(id);
 
   const supplierName = data?.bill.supplierName ?? data?.bill.fileName ?? "Bill";
 
@@ -33,7 +34,7 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
 
       <div className="@container/main px-4 lg:px-6">
         {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
-        {error && <p className="text-sm text-destructive">{error.message}</p>}
+        {error && <ErrorCard message={error.message} onRetry={() => refetch()} />}
 
         {data && (
           <div className="grid gap-6 lg:grid-cols-2">

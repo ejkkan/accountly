@@ -21,8 +21,16 @@ export default function NewBillPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!file) return;
-    const result = await upload.mutateAsync(file);
-    router.push(`/bills/${result.bill.id}`);
+    try {
+      const result = await upload.mutateAsync(file);
+      router.push(`/bills/${result.bill.id}`);
+    } catch {
+      // The global MutationCache.onError toast already surfaced the
+      // ApiError to the user. We catch here only to prevent the await
+      // from throwing into the form's submit handler, so the form
+      // stays interactive (file picker keeps its selection, retry
+      // works without a page reload).
+    }
   }
 
   return (
@@ -55,7 +63,9 @@ export default function NewBillPage() {
                 />
               </div>
 
-              {upload.error && <p className="text-sm text-destructive">{upload.error.message}</p>}
+              {/* Mutation errors surface via the global toast — no inline
+                  message needed. The file picker keeps its selection so a
+                  retry is just clicking Upload again. */}
 
               <div className="flex items-center gap-2">
                 <Button type="submit" disabled={!file || upload.isPending}>
