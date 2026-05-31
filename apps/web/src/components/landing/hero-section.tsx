@@ -61,24 +61,16 @@ export function HeroSection() {
           <div className="relative group">
             <div className="absolute top-2 lg:-top-8 left-1/2 transform -translate-x-1/2 w-[90%] mx-auto h-24 lg:h-80 bg-primary/50 rounded-full blur-3xl"></div>
 
-            <div className="relative rounded-xl border bg-card shadow-2xl overflow-hidden">
+            <div className="relative overflow-hidden rounded-xl border bg-card shadow-2xl">
               <Image
-                src="/dashboard-light.png"
-                alt="Accountly dashboard"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover block dark:hidden"
+                src="/hero.png"
+                alt="Accountly bills dashboard"
+                width={2980}
+                height={1358}
+                className="block w-full rounded-xl"
                 priority
               />
-              <Image
-                src="/dashboard-dark.png"
-                alt="Accountly dashboard"
-                width={1200}
-                height={800}
-                className="w-full rounded-xl object-cover hidden dark:block"
-                priority
-              />
-              <div className="absolute bottom-0 left-0 w-full h-32 md:h-40 lg:h-48 bg-gradient-to-b from-background/0 via-background/70 to-background rounded-b-xl"></div>
+              <div className="absolute bottom-0 left-0 h-24 w-full rounded-b-xl bg-gradient-to-b from-background/0 via-background/60 to-background lg:h-40"></div>
             </div>
           </div>
         </div>
