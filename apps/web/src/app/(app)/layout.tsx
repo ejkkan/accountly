@@ -3,19 +3,14 @@
 import React from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 
 /**
- * Same chrome the shadcnstore template ships with — sidebar + header +
- * footer + theme customizer — wrapped around the Accountly product views.
- * proxy.ts already enforces session-only access; this layout is pure
- * presentation.
- *
- * Differs from the template's original (dashboard)/layout.tsx only by
- * dropping `UpgradeToProButton`, which is template marketing chrome.
+ * Sidebar + header + theme customizer chrome wrapped around the Accountly
+ * product views. proxy.ts already enforces session-only access; this layout
+ * is pure presentation.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
@@ -46,7 +41,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">{children}</div>
               </div>
             </div>
-            <SiteFooter />
           </SidebarInset>
         </>
       ) : (
@@ -58,7 +52,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">{children}</div>
               </div>
             </div>
-            <SiteFooter />
           </SidebarInset>
           <AppSidebar
             variant={config.variant}

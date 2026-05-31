@@ -4,6 +4,7 @@ import { requireSession, type AuthVariables } from "../middleware/auth";
 import type { Env } from "../index";
 import { parseBill } from "../lib/parse-bill";
 import type { ParsedBill } from "../lib/journal-schema";
+import { log, startTimer } from "../lib/log";
 
 type BillsContext = Context<{ Bindings: Env; Variables: AuthVariables }>;
 
@@ -70,6 +71,7 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
       .execute();
   });
 
+  log("bill.decided", { billId: id, decision, byUserId: userId });
   return c.json({ ok: true as const, status: decision });
 }
 
@@ -138,10 +140,21 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     const id = crypto.randomUUID();
     const key = pdfKey(organizationId, id);
 
+    log("bill.upload.received", {
+      billId: id,
+      orgId: organizationId,
+      fileName: file.name,
+      sizeBytes: bytes.byteLength,
+    });
+
+    const r2Timer = startTimer();
     await c.env.INVOICES.put(key, bytes, {
       httpMetadata: { contentType: "application/pdf" },
     });
+    log("bill.r2.stored", { billId: id, key, ms: r2Timer() });
 
+    log("bill.parse.start", { billId: id, model: "claude-sonnet-4-6" });
+    const parseTimer = startTimer();
     let parsed: ParsedBill;
     try {
       parsed = await parseBill({ ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY }, bytes);
@@ -150,10 +163,19 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       // UI can show "retry" later. The R2 object stays so a retry can
       // re-parse without re-uploading.
       const message = err instanceof Error ? err.message : "parse failed";
+      log("bill.parse.failed", { billId: id, ms: parseTimer(), error: message });
       return c.json({ error: `parse failed: ${message}`, fileKey: key }, 502);
     }
+    log("bill.parse.done", {
+      billId: id,
+      ms: parseTimer(),
+      lineItems: parsed.extracted.lineItems.length,
+      postings: parsed.proposal.postings.length,
+      totalMinor: parsed.extracted.totalMinor,
+    });
 
     // Persist bill + line items + journal entry + postings atomically.
+    const persistTimer = startTimer();
     await db.transaction().execute(async (trx) => {
       await trx
         .insertInto("bill")
@@ -218,6 +240,12 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
           }))
         )
         .execute();
+    });
+    log("bill.persisted", {
+      billId: id,
+      lineItems: parsed.extracted.lineItems.length,
+      postings: parsed.proposal.postings.length,
+      ms: persistTimer(),
     });
 
     const bill = await db

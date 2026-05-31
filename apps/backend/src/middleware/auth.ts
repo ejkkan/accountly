@@ -3,6 +3,7 @@ import { createAuth } from "../auth";
 import { createDb, type Database } from "../db";
 import type { Env } from "../index";
 import type { Kysely } from "kysely";
+import { log } from "../lib/log";
 
 /**
  * Context augmentation added by `requireSession`. Routes that mount the
@@ -38,6 +39,7 @@ export const requireSession = (): MiddlewareHandler<{
 
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) {
+      log("auth.rejected", { reason: "no_session", path: c.req.path });
       return c.json({ error: "unauthorized" }, 401);
     }
 
@@ -57,6 +59,11 @@ export const requireSession = (): MiddlewareHandler<{
     }
 
     if (!organizationId) {
+      log("auth.rejected", {
+        reason: "no_org",
+        userId: session.user.id,
+        path: c.req.path,
+      });
       return c.json({ error: "no organization" }, 403);
     }
 
