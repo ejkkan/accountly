@@ -75,11 +75,19 @@ apps/
 
 ## What the LLM does
 
-`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts. Zod refinements enforce:
+`POST /api/bills` reads the PDF bytes once, puts them in R2, then calls the LLM via `generateObject` with the PDF as a `file` content block and a system prompt embedding the BAS chart of accounts.
 
-- every posting moves money exactly one direction (debit XOR credit)
-- total debits === total credits
-- every `accountCode` is one of the 20 BAS codes
+**Structured output, two layers:**
+
+1. **Forced tool call** — `generateObject` translates the Zod schema → JSON Schema → Anthropic tool definition with `tool_choice` set to that tool. Claude is _required_ to return output matching the schema; the API rejects invalid tool inputs. No "model returned almost-valid JSON" failure mode.
+2. **Zod refinements** validate once more on the way out:
+   - every posting moves money exactly one direction (debit XOR credit)
+   - total debits === total credits
+   - every `accountCode` is one of the 20 BAS codes
+
+**Determinism.** `temperature: 0` (greedy decoding) so the same PDF produces the same proposal — same account mappings, same reasoning prose. Anthropic doesn't expose `seed`, so true bit-exact repeatability is off the table, but for practical purposes the model now behaves like a function of the document. For an accounting tool this is the right contract — the accountant trusts the output is a deterministic projection of the source, not "what mood the model is in."
+
+**Discriminated rejection.** Output is a Zod discriminated union — Claude can return `{ kind: "not_an_invoice", reason, detail }` instead of hallucinating an extraction when the PDF is a receipt, a contract, an unreadable scan, or in the wrong currency. The route handler translates that to a 422 `parse_<reason>` AppError carrying Claude's own one-sentence explanation, which the frontend toasts verbatim.
 
 Bill + line items + journal entry + postings are persisted in a single Kysely transaction.
 

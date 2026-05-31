@@ -78,6 +78,15 @@ export async function parseBill(env: ParseBillEnv, pdfBytes: Uint8Array): Promis
         ],
       },
     ],
+    // Greedy decoding — same PDF → same proposal (in practice; Anthropic
+    // doesn't expose `seed`, so true bit-exact repeatability is off the
+    // table). For invoice extraction this is the right contract: the
+    // accountant should trust the proposal is a deterministic function of
+    // the document, not "what mood the model is in." Combined with the
+    // forced-tool-call structured output and Zod refinements, this gives
+    // us shape-determinism (always valid) + content-determinism (same
+    // accounts, same reasoning prose) on identical inputs.
+    temperature: 0,
   });
 
   // The success branch may have account codes from a model slip; the schema
