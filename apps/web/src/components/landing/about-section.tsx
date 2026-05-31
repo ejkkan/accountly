@@ -16,19 +16,19 @@ const steps = [
   },
   {
     icon: Sparkles,
-    title: "2. Claude parses it",
+    title: "2. Our AI reads it",
     description:
-      "We send the PDF to Claude with a structured-output prompt, extracting supplier, dates, line items, VAT (moms) and totals.",
+      "The PDF is handed to our in-house AI, which pulls supplier, dates, line items, VAT (moms) and totals into a clean structured shape.",
   },
   {
     icon: Scale,
-    title: "3. We propose a balanced entry",
+    title: "3. It builds a balanced entry",
     description:
-      "Each line is mapped to a BAS account (e.g. 5010 Lokalhyra, 6530 IT-tjänster), VAT routes to 2640, and debits always equal credits.",
+      "Every line is mapped to a BAS account (e.g. 5010 Lokalhyra, 6530 IT-tjänster), VAT routes to 2640, and debits always equal credits — no manual ledger work.",
   },
   {
     icon: ClipboardCheck,
-    title: "4. The accountant decides",
+    title: "4. You just approve",
     description:
       "The proposed journal sits next to the original PDF. Approve or decline in one click — status flips and the audit trail is preserved.",
   },
@@ -46,9 +46,9 @@ export function AboutSection() {
             A take-home assignment, built around one boring problem
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Accountants spend hours retyping supplier invoices into their accounting system.
-            Accountly is a small, focused prototype that turns that retyping into a one-click review
-            — keeping the accountant in the loop on every entry.
+            Accountants spend hours retyping supplier invoices into their accounting system. With
+            Accountly, our AI does the data entry and the accountant just approves — keeping a human
+            in the loop on every entry without making them do the typing.
           </p>
         </div>
 

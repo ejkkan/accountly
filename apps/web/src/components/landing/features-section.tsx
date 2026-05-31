@@ -26,7 +26,7 @@ const parseFeatures = [
     icon: Sparkles,
     title: "Mapped to the BAS chart",
     description:
-      "Each line is matched to a BAS kontoplan account — 5010 Lokalhyra, 6530 IT-tjänster, 4010 Inköp material, and so on.",
+      "Our AI matches every line to a BAS kontoplan account — 5010 Lokalhyra, 6530 IT-tjänster, 4010 Inköp material, and so on.",
   },
   {
     icon: Percent,
@@ -81,11 +81,12 @@ export function FeaturesSection() {
             How it works
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Parse the bill, propose the entry, hand it to the accountant
+            Our AI does the bookkeeping. You sign off.
           </h2>
           <p className="text-lg text-muted-foreground">
-            Accountly is intentionally small. Two flows: upload a PDF, and approve or decline the
-            journal entry that comes back.
+            Two flows, no busywork: upload a PDF, then approve or decline the journal entry our AI
+            proposes. Everything in between — extraction, account mapping, VAT, balancing — happens
+            for you.
           </p>
         </div>
 
@@ -99,11 +100,11 @@ export function FeaturesSection() {
           <div className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-                The parser does the boring half
+                Our AI does the boring half
               </h3>
               <p className="text-muted-foreground text-base text-pretty">
-                Upload a PDF and Claude returns a structured bill — supplier, line items, VAT,
-                totals — with each line mapped to a BAS kontoplan account.
+                Upload a PDF and our AI returns a structured bill — supplier, line items, VAT,
+                totals — with every line already mapped to the right BAS kontoplan account.
               </p>
             </div>
 

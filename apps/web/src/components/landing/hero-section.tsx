@@ -36,8 +36,9 @@ export function HeroSection() {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Drop a PDF bill into Accountly. Claude extracts the line items, maps each one to a BAS
-            account, and proposes a balanced double-entry for the accountant to approve or decline.
+            Drop a PDF bill into Accountly. Our AI does the data entry — pulls every line item, maps
+            it to the right BAS account, and hands you a balanced journal entry to approve. You stay
+            in control. The typing goes away.
           </p>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">

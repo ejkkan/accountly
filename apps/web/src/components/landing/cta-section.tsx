@@ -33,8 +33,8 @@ export function CTASection() {
                 </h1>
 
                 <p className="text-muted-foreground mx-auto max-w-2xl text-balance lg:text-xl">
-                  Upload a PDF, review the proposed journal entry, approve or decline. That&apos;s
-                  the whole product.
+                  Upload a PDF, let our AI build the journal entry, approve in one click.
+                  That&apos;s the whole product.
                 </p>
               </div>
 

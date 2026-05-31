@@ -21,7 +21,7 @@ const faqItems: FaqItem[] = [
     value: "item-1",
     question: "What does Accountly actually do?",
     answer:
-      "It takes a supplier invoice PDF, runs it through Claude to extract the line items, maps each line to an account from the BAS kontoplan, and produces a balanced double-entry journal proposal for an accountant to approve or decline.",
+      "You drop a supplier invoice PDF in; our AI extracts the line items, maps each one to a BAS kontoplan account, and produces a balanced double-entry journal proposal. The accountant just approves or declines — no manual ledger entry.",
   },
   {
     value: "item-2",
@@ -57,7 +57,7 @@ const faqItems: FaqItem[] = [
     value: "item-6",
     question: "What's the tech stack?",
     answer:
-      "Next.js + shadcn/ui on the frontend, a Cloudflare Workers backend with R2 for PDF storage and Postgres for bill state, Claude for PDF parsing, and better-auth for sessions.",
+      "Next.js + shadcn/ui on the frontend, a Cloudflare Workers backend with R2 for PDF storage and Postgres for bill state, Accountly AI for PDF parsing, and better-auth for sessions.",
   },
 ];
 

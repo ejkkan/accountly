@@ -30,6 +30,7 @@ export interface JournalEntry {
   status: string;
   reasoning: string | null;
   decidedAt?: string | null;
+  decidedByName?: string | null;
 }
 
 /**
@@ -72,11 +73,7 @@ export function JournalEntryCard({
           <CardDescription>
             {showButtons
               ? "LLM-generated postings against the BAS chart of accounts."
-              : `${journalEntry.status === "approved" ? "Approved" : "Declined"} ${
-                  journalEntry.decidedAt
-                    ? `on ${new Date(journalEntry.decidedAt).toLocaleDateString("sv-SE")}`
-                    : ""
-                }`.trim()}
+              : decidedLine(journalEntry)}
           </CardDescription>
         </div>
         {showButtons ? (
@@ -165,6 +162,19 @@ export function JournalEntryCard({
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * Compose the audit-trail line shown once a decision is recorded:
+ *   "Approved by Erik on 2026-05-31"
+ *   "Declined by Anna" (if the date is missing for some reason)
+ *   "Approved" (if neither is set — should never happen in practice)
+ */
+function decidedLine(je: JournalEntry): string {
+  const verb = je.status === "approved" ? "Approved" : "Declined";
+  const by = je.decidedByName ? ` by ${je.decidedByName}` : "";
+  const on = je.decidedAt ? ` on ${new Date(je.decidedAt).toLocaleDateString("sv-SE")}` : "";
+  return `${verb}${by}${on}`;
 }
 
 function StatusBadge({ status }: { status: string }) {
