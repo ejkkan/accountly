@@ -19,9 +19,10 @@ export interface AuthEnv {
 export interface AuthInstance {
   handler: (request: Request) => Promise<Response>;
   api: {
-    getSession: (input: {
-      headers: Headers;
-    }) => Promise<{ user: { id: string }; session: { activeOrganizationId?: string | null } } | null>;
+    getSession: (input: { headers: Headers }) => Promise<{
+      user: { id: string };
+      session: { activeOrganizationId?: string | null };
+    } | null>;
   };
 }
 

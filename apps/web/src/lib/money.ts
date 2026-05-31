@@ -17,10 +17,7 @@ const LOCALE_BY_CURRENCY: Record<string, string> = {
  * Format a minor-unit amount (e.g. 11687500) as a currency string
  * ("116 875,00 kr"). Accepts the bigint-as-string shape we get from JSON.
  */
-export function formatMinor(
-  minor: string | number | bigint,
-  currency = "SEK"
-): string {
+export function formatMinor(minor: string | number | bigint, currency = "SEK"): string {
   const asBigInt = typeof minor === "bigint" ? minor : BigInt(minor);
   // 1/100th: integer-divide for whole units, modulo for the cents.
   const whole = asBigInt / 100n;

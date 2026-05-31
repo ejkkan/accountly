@@ -14,9 +14,7 @@ export function useUploadBill() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
-          "error" in body && typeof body.error === "string"
-            ? body.error
-            : "Upload failed"
+          "error" in body && typeof body.error === "string" ? body.error : "Upload failed"
         );
       }
       return res.json();

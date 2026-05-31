@@ -13,7 +13,7 @@
     {
       "binding": "INVOICES",
       "bucket_name": "accountly-invoices",
-      "preview_bucket_name": "accountly-invoices-preview"
-    }
-  ]
+      "preview_bucket_name": "accountly-invoices-preview",
+    },
+  ],
 }

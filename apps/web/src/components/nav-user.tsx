@@ -53,9 +53,7 @@ export function NavUser() {
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{name}</span>
-                <span className="text-muted-foreground truncate text-xs">
-                  {email}
-                </span>
+                <span className="text-muted-foreground truncate text-xs">{email}</span>
               </div>
               <EllipsisVertical className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -73,17 +71,12 @@ export function NavUser() {
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{name}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    {email}
-                  </span>
+                  <span className="text-muted-foreground truncate text-xs">{email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={handleSignOut}
-              className="cursor-pointer"
-            >
+            <DropdownMenuItem onSelect={handleSignOut} className="cursor-pointer">
               <LogOut />
               Sign out
             </DropdownMenuItem>

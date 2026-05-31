@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { Command as CommandPrimitive } from "cmdk"
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Command as CommandPrimitive } from "cmdk";
 import {
   Search,
   LayoutPanelLeft,
@@ -21,10 +21,10 @@ import {
   Link2,
   Palette,
   type LucideIcon,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -38,8 +38,8 @@ const Command = React.forwardRef<
     )}
     {...props}
   />
-))
-Command.displayName = CommandPrimitive.displayName
+));
+Command.displayName = CommandPrimitive.displayName;
 
 const CommandInput = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Input>,
@@ -53,8 +53,8 @@ const CommandInput = React.forwardRef<
     )}
     {...props}
   />
-))
-CommandInput.displayName = CommandPrimitive.Input.displayName
+));
+CommandInput.displayName = CommandPrimitive.Input.displayName;
 
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
@@ -65,8 +65,8 @@ const CommandList = React.forwardRef<
     className={cn("max-h-[400px] overflow-y-auto overflow-x-hidden pb-2", className)}
     {...props}
   />
-))
-CommandList.displayName = CommandPrimitive.List.displayName
+));
+CommandList.displayName = CommandPrimitive.List.displayName;
 
 const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
@@ -77,8 +77,8 @@ const CommandEmpty = React.forwardRef<
     className="flex h-12 items-center justify-center text-sm text-zinc-500 dark:text-zinc-400"
     {...props}
   />
-))
-CommandEmpty.displayName = CommandPrimitive.Empty.displayName
+));
+CommandEmpty.displayName = CommandPrimitive.Empty.displayName;
 
 const CommandGroup = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Group>,
@@ -92,8 +92,8 @@ const CommandGroup = React.forwardRef<
     )}
     {...props}
   />
-))
-CommandGroup.displayName = CommandPrimitive.Group.displayName
+));
+CommandGroup.displayName = CommandPrimitive.Group.displayName;
 
 const CommandItem = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Item>,
@@ -107,24 +107,24 @@ const CommandItem = React.forwardRef<
     )}
     {...props}
   />
-))
-CommandItem.displayName = CommandPrimitive.Item.displayName
+));
+CommandItem.displayName = CommandPrimitive.Item.displayName;
 
 interface SearchItem {
-  title: string
-  url: string
-  group: string
-  icon?: LucideIcon
+  title: string;
+  url: string;
+  group: string;
+  icon?: LucideIcon;
 }
 
 interface CommandSearchProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
-  const router = useRouter()
-  const commandRef = React.useRef<HTMLDivElement>(null)
+  const router = useRouter();
+  const commandRef = React.useRef<HTMLDivElement>(null);
 
   const searchItems: SearchItem[] = [
     // Dashboards
@@ -143,14 +143,29 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     { title: "Sign Up 1", url: "/auth/sign-up", group: "Auth Pages", icon: Shield },
     { title: "Sign Up 2", url: "/auth/sign-up-2", group: "Auth Pages", icon: Shield },
     { title: "Forgot Password 1", url: "/auth/forgot-password", group: "Auth Pages", icon: Shield },
-    { title: "Forgot Password 2", url: "/auth/forgot-password-2", group: "Auth Pages", icon: Shield },
+    {
+      title: "Forgot Password 2",
+      url: "/auth/forgot-password-2",
+      group: "Auth Pages",
+      icon: Shield,
+    },
 
     // Errors
     { title: "Unauthorized", url: "/errors/unauthorized", group: "Errors", icon: AlertTriangle },
     { title: "Forbidden", url: "/errors/forbidden", group: "Errors", icon: AlertTriangle },
     { title: "Not Found", url: "/errors/not-found", group: "Errors", icon: AlertTriangle },
-    { title: "Internal Server Error", url: "/errors/internal-server-error", group: "Errors", icon: AlertTriangle },
-    { title: "Under Maintenance", url: "/errors/under-maintenance", group: "Errors", icon: AlertTriangle },
+    {
+      title: "Internal Server Error",
+      url: "/errors/internal-server-error",
+      group: "Errors",
+      icon: AlertTriangle,
+    },
+    {
+      title: "Under Maintenance",
+      url: "/errors/under-maintenance",
+      group: "Errors",
+      icon: AlertTriangle,
+    },
 
     // Settings
     { title: "User Settings", url: "/settings/user", group: "Settings", icon: User },
@@ -163,45 +178,45 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
     // Pages
     { title: "FAQs", url: "/faqs", group: "Pages", icon: HelpCircle },
     { title: "Pricing", url: "/pricing", group: "Pages", icon: CreditCard },
-  ]
+  ];
 
-  const groupedItems = searchItems.reduce((acc, item) => {
-    if (!acc[item.group]) {
-      acc[item.group] = []
-    }
-    acc[item.group].push(item)
-    return acc
-  }, {} as Record<string, SearchItem[]>)
+  const groupedItems = searchItems.reduce(
+    (acc, item) => {
+      if (!acc[item.group]) {
+        acc[item.group] = [];
+      }
+      acc[item.group].push(item);
+      return acc;
+    },
+    {} as Record<string, SearchItem[]>
+  );
 
   const handleSelect = (url: string) => {
-    router.push(url)
-    onOpenChange(false)
+    router.push(url);
+    onOpenChange(false);
     // Bounce effect like Vercel
     if (commandRef.current) {
-      commandRef.current.style.transform = 'scale(0.96)'
+      commandRef.current.style.transform = "scale(0.96)";
       setTimeout(() => {
         if (commandRef.current) {
-          commandRef.current.style.transform = ''
+          commandRef.current.style.transform = "";
         }
-      }, 100)
+      }, 100);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 shadow-2xl border border-zinc-200 dark:border-zinc-800 max-w-[640px]">
         <DialogTitle className="sr-only">Command Search</DialogTitle>
-        <Command
-          ref={commandRef}
-          className="transition-transform duration-100 ease-out"
-        >
+        <Command ref={commandRef} className="transition-transform duration-100 ease-out">
           <CommandInput placeholder="What do you need?" autoFocus />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             {Object.entries(groupedItems).map(([group, items]) => (
               <CommandGroup key={group} heading={group}>
                 {items.map((item) => {
-                  const Icon = item.icon
+                  const Icon = item.icon;
                   return (
                     <CommandItem
                       key={item.url}
@@ -211,7 +226,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
                       {Icon && <Icon className="mr-2 h-4 w-4" />}
                       {item.title}
                     </CommandItem>
-                  )
+                  );
                 })}
               </CommandGroup>
             ))}
@@ -219,7 +234,7 @@ export function CommandSearch({ open, onOpenChange }: CommandSearchProps) {
         </Command>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 export function SearchTrigger({ onClick }: { onClick: () => void }) {
@@ -235,5 +250,5 @@ export function SearchTrigger({ onClick }: { onClick: () => void }) {
         <span className="text-xs">⌘</span>K
       </kbd>
     </button>
-  )
+  );
 }

@@ -27,46 +27,30 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .addColumn("email", "text", (c) => c.notNull().unique())
     .addColumn("emailVerified", "boolean", (c) => c.notNull().defaultTo(false))
     .addColumn("image", "text")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn("updatedAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
+    .addColumn("updatedAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
   await db.schema
     .createTable("session")
     .addColumn("id", "text", (c) => c.primaryKey())
-    .addColumn("userId", "text", (c) =>
-      c.notNull().references("user.id").onDelete("cascade")
-    )
+    .addColumn("userId", "text", (c) => c.notNull().references("user.id").onDelete("cascade"))
     .addColumn("token", "text", (c) => c.notNull().unique())
     .addColumn("expiresAt", sql`timestamptz`, (c) => c.notNull())
     .addColumn("ipAddress", "text")
     .addColumn("userAgent", "text")
     // Added by the organization plugin so we don't need a separate migration.
     .addColumn("activeOrganizationId", "text")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn("updatedAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
+    .addColumn("updatedAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
-  await db.schema
-    .createIndex("session_userId_idx")
-    .on("session")
-    .column("userId")
-    .execute();
+  await db.schema.createIndex("session_userId_idx").on("session").column("userId").execute();
 
   await db.schema
     .createTable("account")
     .addColumn("id", "text", (c) => c.primaryKey())
-    .addColumn("userId", "text", (c) =>
-      c.notNull().references("user.id").onDelete("cascade")
-    )
+    .addColumn("userId", "text", (c) => c.notNull().references("user.id").onDelete("cascade"))
     .addColumn("accountId", "text", (c) => c.notNull())
     .addColumn("providerId", "text", (c) => c.notNull())
     .addColumn("accessToken", "text")
@@ -76,19 +60,11 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .addColumn("refreshTokenExpiresAt", sql`timestamptz`)
     .addColumn("scope", "text")
     .addColumn("password", "text")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
-    .addColumn("updatedAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
+    .addColumn("updatedAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
-  await db.schema
-    .createIndex("account_userId_idx")
-    .on("account")
-    .column("userId")
-    .execute();
+  await db.schema.createIndex("account_userId_idx").on("account").column("userId").execute();
 
   await db.schema
     .createTable("verification")
@@ -96,12 +72,8 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .addColumn("identifier", "text", (c) => c.notNull())
     .addColumn("value", "text", (c) => c.notNull())
     .addColumn("expiresAt", sql`timestamptz`, (c) => c.notNull())
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.defaultTo(sql`now()`)
-    )
-    .addColumn("updatedAt", sql`timestamptz`, (c) =>
-      c.defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.defaultTo(sql`now()`))
+    .addColumn("updatedAt", sql`timestamptz`, (c) => c.defaultTo(sql`now()`))
     .execute();
 
   await db.schema
@@ -121,9 +93,7 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     // better-auth stores metadata as JSON-encoded text; jsonb would also work
     // but text matches what the lib writes by default.
     .addColumn("metadata", "text")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
   await db.schema
@@ -132,13 +102,9 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .addColumn("organizationId", "text", (c) =>
       c.notNull().references("organization.id").onDelete("cascade")
     )
-    .addColumn("userId", "text", (c) =>
-      c.notNull().references("user.id").onDelete("cascade")
-    )
+    .addColumn("userId", "text", (c) => c.notNull().references("user.id").onDelete("cascade"))
     .addColumn("role", "text", (c) => c.notNull().defaultTo("member"))
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
   await db.schema
@@ -147,11 +113,7 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .column("organizationId")
     .execute();
 
-  await db.schema
-    .createIndex("member_userId_idx")
-    .on("member")
-    .column("userId")
-    .execute();
+  await db.schema.createIndex("member_userId_idx").on("member").column("userId").execute();
 
   await db.schema
     .createTable("invitation")
@@ -163,9 +125,7 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     .addColumn("role", "text", (c) => c.notNull())
     .addColumn("status", "text", (c) => c.notNull().defaultTo("pending"))
     .addColumn("expiresAt", sql`timestamptz`, (c) => c.notNull())
-    .addColumn("inviterId", "text", (c) =>
-      c.notNull().references("user.id").onDelete("cascade")
-    )
+    .addColumn("inviterId", "text", (c) => c.notNull().references("user.id").onDelete("cascade"))
     .execute();
 }
 

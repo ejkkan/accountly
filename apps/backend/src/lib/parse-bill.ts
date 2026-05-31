@@ -39,10 +39,7 @@ export interface ParseBillEnv {
  * pre-extraction step. `generateObject` enforces the Zod schema and runs
  * the entry-level balance refinement before returning.
  */
-export async function parseBill(
-  env: ParseBillEnv,
-  pdfBytes: Uint8Array
-): Promise<ParsedBill> {
+export async function parseBill(env: ParseBillEnv, pdfBytes: Uint8Array): Promise<ParsedBill> {
   const anthropic = createAnthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
   const { object } = await generateObject({

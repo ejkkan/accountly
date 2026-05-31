@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Shield,
@@ -11,98 +11,98 @@ import {
   Package,
   Layout,
   Crown,
-  Palette
-} from 'lucide-react'
+  Palette,
+} from "lucide-react";
 
 const menuSections = [
   {
-    title: 'Browse Products',
+    title: "Browse Products",
     items: [
       {
-        title: 'Free Blocks',
-        description: 'Essential UI components and sections',
+        title: "Free Blocks",
+        description: "Essential UI components and sections",
         icon: Package,
-        href: '#free-blocks'
+        href: "#free-blocks",
       },
       {
-        title: 'Premium Templates',
-        description: 'Complete page templates and layouts',
+        title: "Premium Templates",
+        description: "Complete page templates and layouts",
         icon: Crown,
-        href: '#premium-templates'
+        href: "#premium-templates",
       },
       {
-        title: 'Admin Dashboards',
-        description: 'Full-featured dashboard solutions',
+        title: "Admin Dashboards",
+        description: "Full-featured dashboard solutions",
         icon: BarChart3,
-        href: '#admin-dashboards'
+        href: "#admin-dashboards",
       },
       {
-        title: 'Landing Pages',
-        description: 'Marketing and product landing templates',
+        title: "Landing Pages",
+        description: "Marketing and product landing templates",
         icon: Layout,
-        href: '#landing-pages'
-      }
-    ]
+        href: "#landing-pages",
+      },
+    ],
   },
   {
-    title: 'Categories',
+    title: "Categories",
     items: [
       {
-        title: 'E-commerce',
-        description: 'Online store admin panels and components',
+        title: "E-commerce",
+        description: "Online store admin panels and components",
         icon: Building2,
-        href: '#ecommerce'
+        href: "#ecommerce",
       },
       {
-        title: 'SaaS Dashboards',
-        description: 'Application admin interfaces',
+        title: "SaaS Dashboards",
+        description: "Application admin interfaces",
         icon: Rocket,
-        href: '#saas-dashboards'
+        href: "#saas-dashboards",
       },
       {
-        title: 'Analytics',
-        description: 'Data visualization and reporting templates',
+        title: "Analytics",
+        description: "Data visualization and reporting templates",
         icon: BarChart3,
-        href: '#analytics'
+        href: "#analytics",
       },
       {
-        title: 'Authentication',
-        description: 'Login, signup, and user management pages',
+        title: "Authentication",
+        description: "Login, signup, and user management pages",
         icon: Shield,
-        href: '#authentication'
-      }
-    ]
+        href: "#authentication",
+      },
+    ],
   },
   {
-    title: 'Resources',
+    title: "Resources",
     items: [
       {
-        title: 'Documentation',
-        description: 'Integration guides and setup instructions',
+        title: "Documentation",
+        description: "Integration guides and setup instructions",
         icon: Database,
-        href: '#docs'
+        href: "#docs",
       },
       {
-        title: 'Component Showcase',
-        description: 'Interactive preview of all components',
+        title: "Component Showcase",
+        description: "Interactive preview of all components",
         icon: Palette,
-        href: '#showcase'
+        href: "#showcase",
       },
       {
-        title: 'GitHub Repository',
-        description: 'Open source foundation and community',
+        title: "GitHub Repository",
+        description: "Open source foundation and community",
         icon: Settings,
-        href: '#github'
+        href: "#github",
       },
       {
-        title: 'Design System',
-        description: 'shadcn/ui standards and customization',
+        title: "Design System",
+        description: "shadcn/ui standards and customization",
         icon: Zap,
-        href: '#design-system'
-      }
-    ]
-  }
-]
+        href: "#design-system",
+      },
+    ],
+  },
+];
 
 export function MegaMenu() {
   return (
@@ -139,5 +139,5 @@ export function MegaMenu() {
         ))}
       </div>
     </div>
-  )
+  );
 }

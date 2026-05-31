@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -54,14 +48,8 @@ export function JournalEntryCard({
   postings: Posting[];
   currency: string;
 }) {
-  const totalDebit = postings.reduce(
-    (sum, p) => sum + BigInt(p.debitMinor),
-    0n
-  );
-  const totalCredit = postings.reduce(
-    (sum, p) => sum + BigInt(p.creditMinor),
-    0n
-  );
+  const totalDebit = postings.reduce((sum, p) => sum + BigInt(p.debitMinor), 0n);
+  const totalCredit = postings.reduce((sum, p) => sum + BigInt(p.creditMinor), 0n);
   const balanced = totalDebit === totalCredit;
 
   return (
@@ -88,19 +76,13 @@ export function JournalEntryCard({
           <TableBody>
             {postings.map((p) => (
               <TableRow key={p.id}>
-                <TableCell className="font-mono text-sm">
-                  {p.accountCode}
-                </TableCell>
+                <TableCell className="font-mono text-sm">{p.accountCode}</TableCell>
                 <TableCell>{p.accountName}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {BigInt(p.debitMinor) > 0n
-                    ? formatMinor(p.debitMinor, currency)
-                    : "—"}
+                  {BigInt(p.debitMinor) > 0n ? formatMinor(p.debitMinor, currency) : "—"}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {BigInt(p.creditMinor) > 0n
-                    ? formatMinor(p.creditMinor, currency)
-                    : "—"}
+                  {BigInt(p.creditMinor) > 0n ? formatMinor(p.creditMinor, currency) : "—"}
                 </TableCell>
               </TableRow>
             ))}
@@ -144,8 +126,8 @@ function StatusBadge({ status }: { status: string }) {
     status === "approved"
       ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
       : status === "declined"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-      : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
+        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
+        : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
   return (
     <Badge variant="outline" className={cls}>
       {status}

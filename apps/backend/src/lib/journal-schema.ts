@@ -57,22 +57,18 @@ const ProposedPosting = z
     creditMinor: MoneyMinor,
   })
   .refine(
-    (p) => (p.debitMinor > 0) !== (p.creditMinor > 0),
+    (p) => p.debitMinor > 0 !== p.creditMinor > 0,
     "Posting must move money exactly one direction (XOR debit/credit)"
   )
   // Reject account codes outside the CoA. The fallback to 4010 happens
   // upstream — by the time we validate, every code should be allowed.
-  .refine(
-    (p) => ALLOWED_ACCOUNT_CODES.has(p.accountCode),
-    { message: "Unknown account code (not in chart of accounts)" }
-  );
+  .refine((p) => ALLOWED_ACCOUNT_CODES.has(p.accountCode), {
+    message: "Unknown account code (not in chart of accounts)",
+  });
 
 const ProposedJournalEntry = z
   .object({
-    reasoning: z
-      .string()
-      .min(1, "Reasoning required")
-      .max(2000, "Keep reasoning under 2000 chars"),
+    reasoning: z.string().min(1, "Reasoning required").max(2000, "Keep reasoning under 2000 chars"),
     postings: z.array(ProposedPosting).min(2, "At least two postings"),
   })
   .refine((j) => {

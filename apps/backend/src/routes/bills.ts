@@ -77,10 +77,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     let parsed: ParsedBill;
     try {
-      parsed = await parseBill(
-        { ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY },
-        bytes
-      );
+      parsed = await parseBill({ ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY }, bytes);
     } catch (err) {
       // Don't poison the bucket; surface the parse failure cleanly so the
       // UI can show "retry" later. The R2 object stays so a retry can
@@ -188,11 +185,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
         .where("billId", "=", id)
         .orderBy("lineNo", "asc")
         .execute(),
-      db
-        .selectFrom("journalEntry")
-        .selectAll()
-        .where("billId", "=", id)
-        .executeTakeFirst(),
+      db.selectFrom("journalEntry").selectAll().where("billId", "=", id).executeTakeFirst(),
     ]);
 
     const postings = journalEntry

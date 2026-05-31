@@ -5,10 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import {
-  ThemeCustomizer,
-  ThemeCustomizerTrigger,
-} from "@/components/theme-customizer";
+import { ThemeCustomizer, ThemeCustomizerTrigger } from "@/components/theme-customizer";
 import { useSidebarConfig } from "@/hooks/use-sidebar-config";
 
 /**
@@ -20,11 +17,7 @@ import { useSidebarConfig } from "@/hooks/use-sidebar-config";
  * Differs from the template's original (dashboard)/layout.tsx only by
  * dropping `UpgradeToProButton`, which is template marketing chrome.
  */
-export default function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
 
@@ -50,9 +43,7 @@ export default function AppLayout({
             <SiteHeader />
             <div className="flex flex-1 flex-col">
               <div className="@container/main flex flex-1 flex-col gap-2">
-                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                  {children}
-                </div>
+                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">{children}</div>
               </div>
             </div>
             <SiteFooter />
@@ -64,9 +55,7 @@ export default function AppLayout({
             <SiteHeader />
             <div className="flex flex-1 flex-col">
               <div className="@container/main flex flex-1 flex-col gap-2">
-                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-                  {children}
-                </div>
+                <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">{children}</div>
               </div>
             </div>
             <SiteFooter />
@@ -80,10 +69,7 @@ export default function AppLayout({
       )}
 
       <ThemeCustomizerTrigger onClick={() => setThemeCustomizerOpen(true)} />
-      <ThemeCustomizer
-        open={themeCustomizerOpen}
-        onOpenChange={setThemeCustomizerOpen}
-      />
+      <ThemeCustomizer open={themeCustomizerOpen} onOpenChange={setThemeCustomizerOpen} />
     </SidebarProvider>
   );
 }

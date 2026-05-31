@@ -49,20 +49,20 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     // Full extracted-data blob from the LLM — useful for debugging /
     // re-deriving fields without re-uploading the PDF.
     .addColumn("rawExtract", "jsonb")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .execute();
 
-  await db.schema.createIndex("bill_organizationId_idx").on("bill").column("organizationId").execute();
+  await db.schema
+    .createIndex("bill_organizationId_idx")
+    .on("bill")
+    .column("organizationId")
+    .execute();
   await db.schema.createIndex("bill_status_idx").on("bill").column("status").execute();
 
   await db.schema
     .createTable("billLineItem")
     .addColumn("id", "text", (c) => c.primaryKey())
-    .addColumn("billId", "text", (c) =>
-      c.notNull().references("bill.id").onDelete("cascade")
-    )
+    .addColumn("billId", "text", (c) => c.notNull().references("bill.id").onDelete("cascade"))
     .addColumn("lineNo", "integer", (c) => c.notNull())
     .addColumn("description", "text", (c) => c.notNull())
     .addColumn("quantity", "numeric(12, 3)")
@@ -94,13 +94,9 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     // LLM's explanation of why these accounts were chosen. Shown verbatim
     // in the UI so accountants can sanity-check the mapping.
     .addColumn("reasoning", "text")
-    .addColumn("createdAt", sql`timestamptz`, (c) =>
-      c.notNull().defaultTo(sql`now()`)
-    )
+    .addColumn("createdAt", sql`timestamptz`, (c) => c.notNull().defaultTo(sql`now()`))
     .addColumn("decidedAt", sql`timestamptz`)
-    .addColumn("decidedByUserId", "text", (c) =>
-      c.references("user.id").onDelete("set null")
-    )
+    .addColumn("decidedByUserId", "text", (c) => c.references("user.id").onDelete("set null"))
     .execute();
 
   await db.schema
@@ -117,14 +113,8 @@ export async function up(rawDb: Kysely<unknown>): Promise<void> {
     // Either side may be zero, but not both — every posting moves money one
     // direction. Caller is also responsible for total debit == total credit
     // across the entry; that's enforced in the route handler.
-    .addCheckConstraint(
-      "posting_one_side_nonzero",
-      sql`("debitMinor" = 0) <> ("creditMinor" = 0)`
-    )
-    .addCheckConstraint(
-      "posting_non_negative",
-      sql`"debitMinor" >= 0 and "creditMinor" >= 0`
-    )
+    .addCheckConstraint("posting_one_side_nonzero", sql`("debitMinor" = 0) <> ("creditMinor" = 0)`)
+    .addCheckConstraint("posting_non_negative", sql`"debitMinor" >= 0 and "creditMinor" >= 0`)
     .execute();
 
   await db.schema

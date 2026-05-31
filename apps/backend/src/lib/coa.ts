@@ -49,11 +49,9 @@ export const FALLBACK_ACCOUNT = { code: "4010", name: "Inköp material & varor" 
  * Markdown-ish table of accounts dropped straight into the LLM prompt.
  * Pre-rendered so we don't rebuild it every request.
  */
-export const PROMPT_CHART_OF_ACCOUNTS = CHART_OF_ACCOUNTS.map(
-  (a) => `${a.code}  ${a.name}`
-).join("\n");
+export const PROMPT_CHART_OF_ACCOUNTS = CHART_OF_ACCOUNTS.map((a) => `${a.code}  ${a.name}`).join(
+  "\n"
+);
 
 /** All allowed codes — handy for the Zod refinement in journal-schema.ts. */
-export const ALLOWED_ACCOUNT_CODES = new Set<string>(
-  CHART_OF_ACCOUNTS.map((a) => a.code)
-);
+export const ALLOWED_ACCOUNT_CODES = new Set<string>(CHART_OF_ACCOUNTS.map((a) => a.code));

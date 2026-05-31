@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -21,10 +15,7 @@ import {
 } from "@/components/ui/table";
 import { useBills } from "@/hooks/use-bills";
 import { formatMinor } from "@/lib/money";
-import {
-  BillsStatCards,
-  type BillsStats,
-} from "./components/bills-stat-cards";
+import { BillsStatCards, type BillsStats } from "./components/bills-stat-cards";
 
 export default function BillsPage() {
   const { data, isLoading, error } = useBills();
@@ -57,9 +48,7 @@ export default function BillsPage() {
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
               <CardTitle>All bills</CardTitle>
-              <CardDescription>
-                Every invoice uploaded by your workspace.
-              </CardDescription>
+              <CardDescription>Every invoice uploaded by your workspace.</CardDescription>
             </div>
             <Button asChild>
               <Link href="/bills/new">
@@ -69,12 +58,8 @@ export default function BillsPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {isLoading && (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            )}
-            {error && (
-              <p className="text-sm text-destructive">{error.message}</p>
-            )}
+            {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+            {error && <p className="text-sm text-destructive">{error.message}</p>}
 
             {data && data.bills.length === 0 && (
               <div className="rounded-lg border border-dashed py-12 text-center">
@@ -103,10 +88,7 @@ export default function BillsPage() {
                   {data.bills.map((bill) => (
                     <TableRow key={bill.id}>
                       <TableCell className="font-medium">
-                        <Link
-                          href={`/bills/${bill.id}`}
-                          className="hover:underline"
-                        >
+                        <Link href={`/bills/${bill.id}`} className="hover:underline">
                           {bill.supplierName ?? bill.fileName}
                         </Link>
                       </TableCell>
@@ -141,8 +123,8 @@ function StatusBadge({ status }: { status: string }) {
     status === "approved"
       ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
       : status === "declined"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-      : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
+        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
+        : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
   return (
     <Badge variant="outline" className={cls}>
       {status}

@@ -4,13 +4,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUploadBill } from "@/hooks/use-upload-bill";
@@ -46,9 +40,7 @@ export default function NewBillPage() {
         <Card className="mx-auto max-w-xl">
           <CardHeader>
             <CardTitle>PDF upload</CardTitle>
-            <CardDescription>
-              Only PDF files are accepted right now.
-            </CardDescription>
+            <CardDescription>Only PDF files are accepted right now.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-4">
@@ -63,22 +55,14 @@ export default function NewBillPage() {
                 />
               </div>
 
-              {upload.error && (
-                <p className="text-sm text-destructive">
-                  {upload.error.message}
-                </p>
-              )}
+              {upload.error && <p className="text-sm text-destructive">{upload.error.message}</p>}
 
               <div className="flex items-center gap-2">
                 <Button type="submit" disabled={!file || upload.isPending}>
                   <Upload className="size-4" />
                   {upload.isPending ? "Uploading…" : "Upload"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => router.back()}
-                >
+                <Button type="button" variant="ghost" onClick={() => router.back()}>
                   Cancel
                 </Button>
               </div>

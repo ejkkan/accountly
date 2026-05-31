@@ -4,28 +4,17 @@ import { use } from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useBill } from "@/hooks/use-bill";
 import { formatMinor } from "@/lib/money";
 import { JournalEntryCard } from "../components/journal-entry-card";
 
-export default function BillDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data, isLoading, error } = useBill(id);
 
-  const supplierName =
-    data?.bill.supplierName ?? data?.bill.fileName ?? "Bill";
+  const supplierName = data?.bill.supplierName ?? data?.bill.fileName ?? "Bill";
 
   return (
     <>
@@ -43,9 +32,7 @@ export default function BillDetailPage({
       </div>
 
       <div className="@container/main px-4 lg:px-6">
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        )}
+        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {error && <p className="text-sm text-destructive">{error.message}</p>}
 
         {data && (
@@ -82,10 +69,7 @@ export default function BillDetailPage({
                       label="Subtotal"
                       value={
                         data.bill.subtotalMinor != null
-                          ? formatMinor(
-                              data.bill.subtotalMinor,
-                              data.bill.currency
-                            )
+                          ? formatMinor(data.bill.subtotalMinor, data.bill.currency)
                           : null
                       }
                     />
@@ -101,10 +85,7 @@ export default function BillDetailPage({
                       label="Total"
                       value={
                         data.bill.totalMinor != null
-                          ? formatMinor(
-                              data.bill.totalMinor,
-                              data.bill.currency
-                            )
+                          ? formatMinor(data.bill.totalMinor, data.bill.currency)
                           : null
                       }
                     />
@@ -155,8 +136,8 @@ function StatusBadge({ status }: { status: string }) {
     status === "approved"
       ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400"
       : status === "declined"
-      ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
-      : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
+        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/20 dark:text-red-400"
+        : "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400";
   return (
     <Badge variant="outline" className={cls}>
       {status}

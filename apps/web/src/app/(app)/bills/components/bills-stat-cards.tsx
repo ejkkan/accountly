@@ -9,12 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  FileText,
-  Clock5,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { FileText, Clock5, CheckCircle2, XCircle } from "lucide-react";
 
 /**
  * Bills KPI row — same layout as the template's SectionCards
@@ -50,9 +45,7 @@ export function BillsStatCards({ stats }: { stats: BillsStats }) {
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">
-            Uploaded by your workspace
-          </div>
+          <div className="text-muted-foreground">Uploaded by your workspace</div>
         </CardFooter>
       </Card>
 
@@ -70,9 +63,7 @@ export function BillsStatCards({ stats }: { stats: BillsStats }) {
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">
-            Need an accountant decision
-          </div>
+          <div className="text-muted-foreground">Need an accountant decision</div>
         </CardFooter>
       </Card>
 
@@ -90,9 +81,7 @@ export function BillsStatCards({ stats }: { stats: BillsStats }) {
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">
-            Journal entry accepted
-          </div>
+          <div className="text-muted-foreground">Journal entry accepted</div>
         </CardFooter>
       </Card>
 
@@ -110,9 +99,7 @@ export function BillsStatCards({ stats }: { stats: BillsStats }) {
           </CardAction>
         </CardHeader>
         <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="text-muted-foreground">
-            Proposal sent back
-          </div>
+          <div className="text-muted-foreground">Proposal sent back</div>
         </CardFooter>
       </Card>
     </div>

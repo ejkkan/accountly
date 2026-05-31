@@ -13,7 +13,7 @@ import { organizationClient } from "better-auth/client/plugins";
 const baseURL =
   typeof window !== "undefined"
     ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:5001";
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:5001");
 
 export const authClient = createAuthClient({
   baseURL,
