@@ -40,8 +40,11 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           {
+            // SAMEORIGIN (not DENY) so the bill detail page can render the
+            // invoice PDF in a same-origin <iframe src="/api/bills/:id/file">.
+            // Still blocks external sites from framing the app (clickjacking).
             key: "X-Frame-Options",
-            value: "DENY",
+            value: "SAMEORIGIN",
           },
           {
             key: "X-Content-Type-Options",
