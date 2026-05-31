@@ -66,7 +66,7 @@ export function LandingNavbar() {
         <div className="hidden xl:flex items-center space-x-2">
           <ModeToggle variant="ghost" />
           <Button variant="outline" asChild className="cursor-pointer">
-            <Link href="/dashboard">
+            <Link href="/bills">
               <LayoutDashboard className="h-4 w-4 mr-2" />
               Dashboard
             </Link>
@@ -141,7 +141,7 @@ export function LandingNavbar() {
               <div className="border-t p-6 space-y-4">
                 <div className="space-y-3">
                   <Button variant="outline" size="lg" asChild className="w-full cursor-pointer">
-                    <Link href="/dashboard">
+                    <Link href="/bills">
                       <LayoutDashboard className="size-4" />
                       Dashboard
                     </Link>

@@ -107,7 +107,7 @@ const FaqSection = () => {
               Still curious? Open the dashboard and try it.
             </p>
             <Button className="cursor-pointer" asChild>
-              <a href="/dashboard">Open Dashboard</a>
+              <a href="/bills">Open Dashboard</a>
             </Button>
           </div>
         </div>

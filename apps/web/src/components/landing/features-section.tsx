@@ -154,7 +154,7 @@ export function FeaturesSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 pe-4 pt-2">
               <Button size="lg" className="cursor-pointer" asChild>
-                <Link href="/dashboard" className="flex items-center">
+                <Link href="/bills" className="flex items-center">
                   Open Dashboard
                   <ArrowRight className="ms-2 size-4" aria-hidden="true" />
                 </Link>
@@ -198,7 +198,7 @@ export function FeaturesSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 pe-4 pt-2">
               <Button size="lg" className="cursor-pointer" asChild>
-                <Link href="/dashboard" className="flex items-center">
+                <Link href="/bills" className="flex items-center">
                   See it in the dashboard
                   <ArrowRight className="ms-2 size-4" aria-hidden="true" />
                 </Link>

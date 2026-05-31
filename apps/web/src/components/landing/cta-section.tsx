@@ -40,7 +40,7 @@ export function CTASection() {
 
               <div className="flex flex-col justify-center gap-4 sm:flex-row sm:gap-6">
                 <Button size="lg" className="cursor-pointer px-8 py-6 text-lg font-medium" asChild>
-                  <Link href="/dashboard">
+                  <Link href="/bills">
                     <FileUp className="me-2 size-5" />
                     Open Dashboard
                     <ArrowRight className="ms-2 size-4 transition-transform group-hover:translate-x-1" />

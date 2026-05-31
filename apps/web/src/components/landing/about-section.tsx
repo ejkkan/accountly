@@ -71,7 +71,7 @@ export function AboutSection() {
         <div className="mt-16 text-center">
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="cursor-pointer" asChild>
-              <Link href="/dashboard">Try the dashboard</Link>
+              <Link href="/bills">Try the dashboard</Link>
             </Button>
             <Button size="lg" variant="outline" className="cursor-pointer" asChild>
               <Link href="/auth/sign-up">Create an account</Link>
