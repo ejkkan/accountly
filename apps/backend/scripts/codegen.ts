@@ -33,9 +33,15 @@ const result = spawnSync(
     "--dialect",
     "postgres",
     "--camel-case",
+    // Keep DATE columns as `YYYY-MM-DD` strings — pg's default Date object
+    // serialises with a UTC offset that mangles calendar dates (an invoice
+    // dated 2026-03-10 surfaces as "...T23:00:00.000Z" depending on tz).
+    // Pair with `types.setTypeParser(1082, v => v)` in src/db.ts so the
+    // runtime value matches.
+    "--date-parser",
+    "string",
     "--out-file",
     outFile,
-    // Skip migrator bookkeeping tables — they're not part of the app schema.
     "--exclude-pattern",
     "kysely_*",
   ],

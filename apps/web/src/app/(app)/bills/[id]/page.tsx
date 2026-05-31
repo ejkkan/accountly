@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useBill } from "@/hooks/use-bill";
 import { formatMinor } from "@/lib/money";
+import { JournalEntryCard } from "../components/journal-entry-card";
 
 export default function BillDetailPage({
   params,
@@ -111,19 +112,27 @@ export default function BillDetailPage({
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Proposed journal entry</CardTitle>
-                  <CardDescription>
-                    LLM-generated postings against the BAS chart of accounts.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-                    Journal entry generation lands in phase 5.
-                  </div>
-                </CardContent>
-              </Card>
+              {data.journalEntry ? (
+                <JournalEntryCard
+                  journalEntry={data.journalEntry}
+                  postings={data.postings}
+                  currency={data.bill.currency}
+                />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Proposed journal entry</CardTitle>
+                    <CardDescription>
+                      LLM-generated postings against the BAS chart of accounts.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                      No proposal — parsing may have failed on upload.
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         )}

@@ -1,26 +1,25 @@
 import { Hono } from "hono";
+import { sql } from "kysely";
 import { requireSession, type AuthVariables } from "../middleware/auth";
 import type { Env } from "../index";
+import { parseBill } from "../lib/parse-bill";
+import type { ParsedBill } from "../lib/journal-schema";
 
-/**
- * Build the R2 object key for a bill's PDF. Hierarchical so a future bulk
- * delete on an organization can do `list({ prefix })` cleanly.
- */
 function pdfKey(organizationId: string, billId: string): string {
   return `${organizationId}/bills/${billId}.pdf`;
 }
 
 /**
- * Bill CRUD. Every route under here is session-gated; the middleware
- * attaches `userId` + `organizationId` + a per-request Kysely instance to
- * the context.
+ * Bill CRUD. Every route is session-gated; the middleware attaches
+ * `userId` + `organizationId` + a per-request Kysely instance.
  *
  * Routes:
- *   POST   /             multipart upload → R2 put + bill row, returns the bill
+ *   POST   /             multipart upload → R2 put → Claude parse →
+ *                        bill + line items + journal entry + postings in
+ *                        a single transaction
  *   GET    /             list for the active org
- *   GET    /:id          single bill + line items
- *   GET    /:id/file     streams the PDF from R2 (no auth-gate skip — the URL
- *                        is meaningless without the cookie)
+ *   GET    /:id          bill + line items + journal entry + postings
+ *   GET    /:id/file     streams the PDF from R2
  *
  * Kept as one chained expression so the route tree survives into AppType.
  */
@@ -56,9 +55,6 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     const organizationId = c.get("organizationId");
     const userId = c.get("userId");
 
-    // Hono's parseBody returns `Record<string, string | File | ...>` —
-    // properly typed File values, unlike `c.req.formData()` which inherits
-    // workers-types' string-only FormData.get signature.
     const body = await c.req.parseBody<{ file?: File }>();
     const file = body.file;
     if (!file || typeof file === "string") {
@@ -68,25 +64,97 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       return c.json({ error: "expected application/pdf" }, 400);
     }
 
+    // Read once, reuse for R2 + Claude. Worker memory limit is plenty for a
+    // single invoice PDF (the assignment PDF is 2KB).
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
     const id = crypto.randomUUID();
     const key = pdfKey(organizationId, id);
 
-    await c.env.INVOICES.put(key, file.stream(), {
+    await c.env.INVOICES.put(key, bytes, {
       httpMetadata: { contentType: "application/pdf" },
     });
 
-    await db
-      .insertInto("bill")
-      .values({
-        id,
-        organizationId,
-        uploadedByUserId: userId,
-        fileKey: key,
-        fileName: file.name,
-        status: "pending",
-        currency: "SEK",
-      })
-      .execute();
+    let parsed: ParsedBill;
+    try {
+      parsed = await parseBill(
+        { ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY },
+        bytes
+      );
+    } catch (err) {
+      // Don't poison the bucket; surface the parse failure cleanly so the
+      // UI can show "retry" later. The R2 object stays so a retry can
+      // re-parse without re-uploading.
+      const message = err instanceof Error ? err.message : "parse failed";
+      return c.json({ error: `parse failed: ${message}`, fileKey: key }, 502);
+    }
+
+    // Persist bill + line items + journal entry + postings atomically.
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .insertInto("bill")
+        .values({
+          id,
+          organizationId,
+          uploadedByUserId: userId,
+          fileKey: key,
+          fileName: file.name,
+          status: "pending",
+          currency: parsed.extracted.currency,
+          supplierName: parsed.extracted.supplierName,
+          invoiceNumber: parsed.extracted.invoiceNumber,
+          invoiceDate: parsed.extracted.invoiceDate,
+          dueDate: parsed.extracted.dueDate,
+          subtotalMinor: parsed.extracted.subtotalMinor,
+          vatMinor: parsed.extracted.vatMinor,
+          totalMinor: parsed.extracted.totalMinor,
+          rawExtract: sql`${JSON.stringify(parsed.extracted)}::jsonb`,
+        })
+        .execute();
+
+      if (parsed.extracted.lineItems.length > 0) {
+        await trx
+          .insertInto("billLineItem")
+          .values(
+            parsed.extracted.lineItems.map((li) => ({
+              id: crypto.randomUUID(),
+              billId: id,
+              lineNo: li.lineNo,
+              description: li.description,
+              quantity: li.quantity,
+              unitPriceMinor: li.unitPriceMinor,
+              amountMinor: li.amountMinor,
+            }))
+          )
+          .execute();
+      }
+
+      const journalEntryId = crypto.randomUUID();
+      await trx
+        .insertInto("journalEntry")
+        .values({
+          id: journalEntryId,
+          billId: id,
+          status: "proposed",
+          reasoning: parsed.proposal.reasoning,
+        })
+        .execute();
+
+      await trx
+        .insertInto("journalEntryPosting")
+        .values(
+          parsed.proposal.postings.map((p) => ({
+            id: crypto.randomUUID(),
+            journalEntryId,
+            lineNo: p.lineNo,
+            accountCode: p.accountCode,
+            accountName: p.accountName,
+            debitMinor: p.debitMinor,
+            creditMinor: p.creditMinor,
+          }))
+        )
+        .execute();
+    });
 
     const bill = await db
       .selectFrom("bill")
@@ -113,14 +181,30 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       return c.json({ error: "not found" }, 404);
     }
 
-    const lineItems = await db
-      .selectFrom("billLineItem")
-      .selectAll()
-      .where("billId", "=", id)
-      .orderBy("lineNo", "asc")
-      .execute();
+    const [lineItems, journalEntry] = await Promise.all([
+      db
+        .selectFrom("billLineItem")
+        .selectAll()
+        .where("billId", "=", id)
+        .orderBy("lineNo", "asc")
+        .execute(),
+      db
+        .selectFrom("journalEntry")
+        .selectAll()
+        .where("billId", "=", id)
+        .executeTakeFirst(),
+    ]);
 
-    return c.json({ bill, lineItems });
+    const postings = journalEntry
+      ? await db
+          .selectFrom("journalEntryPosting")
+          .selectAll()
+          .where("journalEntryId", "=", journalEntry.id)
+          .orderBy("lineNo", "asc")
+          .execute()
+      : [];
+
+    return c.json({ bill, lineItems, journalEntry: journalEntry ?? null, postings });
   })
 
   .get("/:id/file", async (c) => {
@@ -147,8 +231,6 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     return new Response(obj.body, {
       headers: {
         "content-type": "application/pdf",
-        // `inline` so the browser renders it in the <iframe>; the filename is
-        // only used if the user explicitly downloads.
         "content-disposition": `inline; filename="${bill.fileName.replace(/"/g, "")}"`,
         "cache-control": "private, max-age=60",
       },

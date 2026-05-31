@@ -111,13 +111,10 @@ export default function BillsPage() {
                         </Link>
                       </TableCell>
                       <TableCell>{bill.invoiceNumber ?? "—"}</TableCell>
-                      <TableCell>
-                        {bill.invoiceDate
-                          ? new Date(bill.invoiceDate).toLocaleDateString(
-                              "sv-SE"
-                            )
-                          : "—"}
-                      </TableCell>
+                      {/* Bill.invoiceDate is already a YYYY-MM-DD string from
+                          the backend — don't re-parse through Date, that
+                          re-introduces the UTC offset we just fixed. */}
+                      <TableCell>{bill.invoiceDate ?? "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {bill.totalMinor != null
                           ? formatMinor(bill.totalMinor, bill.currency)

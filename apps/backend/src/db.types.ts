@@ -46,11 +46,11 @@ export interface Account {
 export interface Bill {
   createdAt: Generated<Timestamp>;
   currency: Generated<string>;
-  dueDate: Timestamp | null;
+  dueDate: string | null;
   fileKey: string;
   fileName: string;
   id: string;
-  invoiceDate: Timestamp | null;
+  invoiceDate: string | null;
   invoiceNumber: string | null;
   organizationId: string;
   rawExtract: Json | null;
