@@ -12,7 +12,7 @@ import * as path from "node:path";
 import { promises as fs } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
-import { FileMigrationProvider, Kysely, Migrator, PostgresDialect } from "kysely";
+import { FileMigrationProvider, Kysely, Migrator, NO_MIGRATIONS, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   }
 
   if (cmd === "reset") {
-    const { error: dErr, results: dRes } = await migrator.migrateTo("NO_MIGRATIONS");
+    const { error: dErr, results: dRes } = await migrator.migrateTo(NO_MIGRATIONS);
     report("down (reset)", dRes, dErr);
     if (dErr) return;
     const { error: uErr, results: uRes } = await migrator.migrateToLatest();
