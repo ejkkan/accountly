@@ -12,18 +12,16 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
  * Stable `code` strings so the frontend can branch on them without
  * fragile message comparisons:
  *
- *   missing_file               — POST /bills with no `file` part
- *   wrong_type                 — non-PDF mime
- *   not_an_invoice             — LLM classifier said it isn't a supplier invoice
- *   parse_unreadable           — LLM couldn't read the PDF (scan/blurry)
- *   parse_wrong_currency       — we only handle SEK for now
- *   parse_missing_data         — critical fields absent (no total, etc.)
- *   parse_other                — LLM hit something we didn't enum
- *   parse_failed               — parse agent threw (network, schema, etc.)
- *   unauth / no_org            — auth middleware rejections
- *   not_found                  — bill / journal entry not found
- *   no_journal_entry           — can't approve/decline a bill without one
- *   internal                   — anything we didn't catch (set by onError)
+ *   missing_file / not_pdf / too_large / missing_id  — 400 input validation
+ *   unauth                     — 401, missing/invalid session
+ *   no_org                     — 403, account isn't attached to a workspace
+ *   not_found                  — 404, bill / journal entry / supplier not in workspace
+ *   no_journal_entry           — 409, can't approve/decline a bill without one
+ *   status_locked              — 409, illegal transition (e.g. already decided)
+ *   not_an_invoice             — 422, the LLM said the PDF isn't a supplier invoice
+ *   invalid_proposal           — 422, entry failed validateProposal (unbalanced, etc.)
+ *   parse_failed               — 502, the parse agent threw (network, schema, etc.)
+ *   internal                   — 500, anything we didn't catch (set by onError)
  */
 export class AppError extends Error {
   constructor(

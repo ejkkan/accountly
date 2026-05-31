@@ -47,8 +47,9 @@ export function Providers({ children }: { children: ReactNode }) {
         }),
         queryCache: new QueryCache({
           onError: (err) => {
-            // Logged but not toasted — see comment above.
-            if (typeof window !== "undefined" && err instanceof ApiError) {
+            // Logged but not toasted — see comment above. Dev-only so prod
+            // doesn't carry stray console output.
+            if (process.env.NODE_ENV !== "production" && err instanceof ApiError) {
               console.debug("[query]", err.status, err.code, err.message);
             }
           },
