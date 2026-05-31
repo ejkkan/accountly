@@ -1,0 +1,69 @@
+import type { MiddlewareHandler } from "hono";
+import { createAuth } from "../auth";
+import { createDb, type Database } from "../db";
+import type { Env } from "../index";
+import type { Kysely } from "kysely";
+
+/**
+ * Context augmentation added by `requireSession`. Routes that mount the
+ * middleware can pull `c.get("userId")` etc. without re-parsing the cookie.
+ */
+export type AuthVariables = {
+  userId: string;
+  organizationId: string;
+  db: Kysely<Database>;
+};
+
+/**
+ * Look up the session via better-auth and attach userId + the user's active
+ * organization to the context. Returns 401 with a tiny JSON body if there's
+ * no session — the web's proxy.ts already enforces the redirect, so the only
+ * way to hit this path unauthenticated is a direct API call.
+ *
+ * Active organization defaults to the user's first membership when
+ * better-auth hasn't populated session.activeOrganizationId yet (fresh
+ * signup, no organization-switcher click).
+ */
+export const requireSession = (): MiddlewareHandler<{
+  Bindings: Env;
+  Variables: AuthVariables;
+}> => {
+  return async (c, next) => {
+    const db = createDb(c.env.DATABASE_URL);
+    const auth = createAuth(db, {
+      BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
+      BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+      APP_URL: c.env.APP_URL,
+    });
+
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    let organizationId = session.session.activeOrganizationId ?? null;
+    if (!organizationId) {
+      // Fall back to the user's first membership — every signup auto-creates
+      // a personal org via auth.ts's user.create.after hook, so this should
+      // always resolve.
+      const member = await db
+        .selectFrom("member")
+        .select("organizationId")
+        .where("userId", "=", session.user.id)
+        .orderBy("createdAt", "asc")
+        .limit(1)
+        .executeTakeFirst();
+      organizationId = member?.organizationId ?? null;
+    }
+
+    if (!organizationId) {
+      return c.json({ error: "no organization" }, 403);
+    }
+
+    c.set("userId", session.user.id);
+    c.set("organizationId", organizationId);
+    c.set("db", db);
+
+    await next();
+  };
+};

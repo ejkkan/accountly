@@ -4,5 +4,16 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-05-29",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // R2 bucket for uploaded PDFs. Miniflare simulates this locally without a
+  // real Cloudflare bucket — `wrangler r2 bucket create accountly-invoices`
+  // is only needed for the deployed Worker.
+  "r2_buckets": [
+    {
+      "binding": "INVOICES",
+      "bucket_name": "accountly-invoices",
+      "preview_bucket_name": "accountly-invoices-preview"
+    }
+  ]
 }

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { createAuth } from "./auth";
 import { createDb } from "./db";
+import { billsRoutes } from "./routes/bills";
 
 export interface Env {
   DATABASE_URL: string;
@@ -10,6 +11,8 @@ export interface Env {
   APP_URL: string;
   /** Anthropic key for invoice → journal-entry generation (used in phase 5). */
   ANTHROPIC_API_KEY: string;
+  /** R2 bucket holding uploaded PDFs. See wrangler.jsonc. */
+  INVOICES: R2Bucket;
 }
 
 /**
@@ -30,7 +33,8 @@ const app = new Hono<{ Bindings: Env }>()
       APP_URL: c.env.APP_URL,
     });
     return auth.handler(c.req.raw);
-  });
+  })
+  .route("/api/bills", billsRoutes);
 
 export type AppType = typeof app;
 
