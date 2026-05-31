@@ -12,8 +12,9 @@ import { Conflict } from "./errors";
  * this module client-side).
  *
  * The accounting-correct rules:
- *  - `pending`   — proposal not yet booked into the ledger. Everything's
- *                  allowed; you can re-run the LLM or throw it away.
+ *  - `pending`   — proposal generated, not yet booked into the ledger.
+ *                  Everything's allowed; re-run the LLM (`canReparse`),
+ *                  decide it, or throw it away.
  *  - `approved`  — booked into the ledger. Locked — to "undo," you'd add
  *                  a reverse-entry workflow (sketched in the README's
  *                  "what's not built" section).

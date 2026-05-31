@@ -33,19 +33,6 @@ export const CHART_OF_ACCOUNTS = [
 export type AccountCode = (typeof CHART_OF_ACCOUNTS)[number]["code"];
 
 /**
- * Safe lookup: returns null for unknown codes (e.g. if the model
- * hallucinates a code outside the table). Callers should map null → the
- * fallback account (4010 — Inköp material & varor) per the design
- * decision in phase 5.
- */
-export function accountByCode(code: string): { code: string; name: string } | null {
-  return CHART_OF_ACCOUNTS.find((a) => a.code === code) ?? null;
-}
-
-/** When Claude can't confidently map a line, this is what we use. */
-export const FALLBACK_ACCOUNT = { code: "4010", name: "Inköp material & varor" } as const;
-
-/**
  * Markdown-ish table of accounts dropped straight into the LLM prompt.
  * Pre-rendered so we don't rebuild it every request.
  */
@@ -53,5 +40,20 @@ export const PROMPT_CHART_OF_ACCOUNTS = CHART_OF_ACCOUNTS.map((a) => `${a.code} 
   "\n"
 );
 
-/** All allowed codes — handy for the Zod refinement in journal-schema.ts. */
+/** All allowed codes — used by validateProposal (lib/validate-proposal.ts). */
 export const ALLOWED_ACCOUNT_CODES = new Set<string>(CHART_OF_ACCOUNTS.map((a) => a.code));
+
+const ACCOUNT_NAME_BY_CODE = new Map<string, string>(
+  CHART_OF_ACCOUNTS.map((a) => [a.code, a.name])
+);
+
+/**
+ * Canonical account name for a chart code. The proposal only carries the
+ * account *code* (the model's decision); the displayed name is derived here
+ * so a code can never be persisted/shown with the wrong label. Codes are
+ * chart-validated before persisting, so the lookup is always present — the
+ * fallback to the code is purely defensive.
+ */
+export function accountName(code: string): string {
+  return ACCOUNT_NAME_BY_CODE.get(code) ?? code;
+}

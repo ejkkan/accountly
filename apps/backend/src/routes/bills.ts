@@ -3,6 +3,8 @@ import { sql, type Transaction } from "kysely";
 import { requireSession, type AuthVariables } from "../middleware/auth";
 import type { Env } from "../index";
 import { parseBill } from "../lib/parse-bill";
+import { validateProposal } from "../lib/validate-proposal";
+import { accountName } from "../lib/coa";
 import { log, startTimer } from "../lib/log";
 import { BadRequest, Conflict, NotFound, Unprocessable, Upstream } from "../lib/errors";
 import { assertCan, permissionsFor } from "../lib/bill-states";
@@ -12,14 +14,16 @@ import type { Database } from "../db";
 type BillsContext = Context<{ Bindings: Env; Variables: AuthVariables }>;
 type Trx = Transaction<Database>;
 
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
+
 function pdfKey(organizationId: string, billId: string): string {
   return `${organizationId}/bills/${billId}.pdf`;
 }
 
 /**
  * Insert the LLM's extraction + proposal as line items + journal entry +
- * postings. Shared by the initial POST and POST /:id/reparse; caller wraps
- * in a transaction.
+ * postings. Called from the analyze route's onFinish for both first
+ * analysis and reparse; caller wraps in a transaction.
  */
 async function insertProposal(trx: Trx, billId: string, parsed: ParsedBillOkT): Promise<void> {
   if (parsed.extracted.lineItems.length > 0) {
@@ -58,7 +62,7 @@ async function insertProposal(trx: Trx, billId: string, parsed: ParsedBillOkT): 
         journalEntryId,
         lineNo: p.lineNo,
         accountCode: p.accountCode,
-        accountName: p.accountName,
+        accountName: accountName(p.accountCode),
         debitMinor: p.debitMinor,
         creditMinor: p.creditMinor,
       }))
@@ -121,20 +125,22 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
  * `userId` + `organizationId` + a per-request Kysely instance.
  *
  * Routes:
- *   POST   /                 multipart upload → R2 put → Claude parse →
- *                            bill + line items + journal entry + postings
- *                            in a single transaction
+ *   POST   /                 multipart upload, one PDF. Synchronous: parse
+ *                            (model run to completion) → on success R2 put +
+ *                            persist bill/line items/entry/postings as
+ *                            `pending`. A rejected (non-invoice) document
+ *                            422s and stores nothing. Returns `{ billId }`.
  *   GET    /                 list for the active org
  *   GET    /:id              bill + line items + journal entry + postings
  *                            (journalEntry includes the decided-by user's
  *                            name for the audit-trail UI line)
  *   GET    /:id/file         streams the PDF from R2
+ *   POST   /:id/reparse      re-runs the agent on the stored PDF; replaces
+ *                            line items + journal entry + postings; resets
+ *                            bill.status to `pending`
  *   POST   /:id/approve      flips journalEntry.status + bill.status to
  *                            "approved"; idempotent if already terminal
  *   POST   /:id/decline      same but to "declined"
- *   POST   /:id/reparse      re-runs Claude on the existing R2 PDF;
- *                            replaces line items + journal entry +
- *                            postings; resets bill.status to "pending"
  *   DELETE /:id              removes R2 object + cascades the bill row
  *                            through line items / journal entry / postings
  *
@@ -176,61 +182,67 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     const organizationId = c.get("organizationId");
     const userId = c.get("userId");
 
-    const body = await c.req.parseBody<{ file?: File }>();
-    const file = body.file;
-    if (!file || typeof file === "string") {
-      throw BadRequest("missing_file", "Please attach a PDF to upload.");
+    // Multipart upload — one PDF. Synchronous: parse → (on success) store +
+    // persist in one request, then the client redirects to the bill detail
+    // with the proposal already in place.
+    const body = await c.req.parseBody();
+    const file = body["file"];
+    if (!(file instanceof File)) {
+      throw BadRequest("missing_file", "Attach a PDF in the `file` field of a multipart form.");
     }
     if (file.type !== "application/pdf") {
-      throw BadRequest("wrong_type", "Only PDF files are supported.");
+      throw BadRequest("not_pdf", "Only PDF files are accepted.");
     }
-
     const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.byteLength > MAX_PDF_BYTES) {
+      throw BadRequest("too_large", "PDF exceeds the 10 MB upload limit.");
+    }
+    const fileName = file.name || "invoice.pdf";
 
-    const id = crypto.randomUUID();
-    const key = pdfKey(organizationId, id);
+    log("bill.upload.received", { orgId: organizationId, fileName, sizeBytes: bytes.byteLength });
 
-    log("bill.upload.received", {
-      billId: id,
-      orgId: organizationId,
-      fileName: file.name,
-      sizeBytes: bytes.byteLength,
-    });
-
-    const r2Timer = startTimer();
-    await c.env.INVOICES.put(key, bytes, {
-      httpMetadata: { contentType: "application/pdf" },
-    });
-    log("bill.r2.stored", { billId: id, key, ms: r2Timer() });
-
-    log("bill.parse.start", { billId: id, model: "claude-sonnet-4-6" });
+    // Parse FIRST, from the in-memory bytes. We only touch R2 + the DB on a
+    // successful proposal, so a rejected (non-invoice) document leaves
+    // nothing behind — no orphan blob, no orphan row.
     const parseTimer = startTimer();
     let parsed;
     try {
       parsed = await parseBill({ ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY }, bytes);
     } catch (err) {
       const message = err instanceof Error ? err.message : "parse failed";
-      log("bill.parse.failed", { billId: id, ms: parseTimer(), error: message });
+      log("bill.parse.failed", { ms: parseTimer(), error: message });
       throw Upstream("parse_failed", "We couldn't read this invoice. Try again in a moment.");
     }
 
     if (parsed.kind === "not_an_invoice") {
-      log("bill.parse.rejected", {
-        billId: id,
-        reason: parsed.reason,
-        detail: parsed.detail,
-        ms: parseTimer(),
-      });
-      throw Unprocessable(`parse_${parsed.reason}`, parsed.detail);
+      log("bill.parse.rejected", { detail: parsed.detail, ms: parseTimer() });
+      throw Unprocessable("not_an_invoice", parsed.detail);
     }
 
     log("bill.parse.done", {
-      billId: id,
       ms: parseTimer(),
       lineItems: parsed.extracted.lineItems.length,
       postings: parsed.proposal.postings.length,
-      totalMinor: parsed.extracted.totalMinor,
     });
+
+    // Authoritative accounting gate — balance, single-direction, known
+    // accounts. The schema only checks shape; this decides whether the
+    // proposal is bookable. Invalid → 422, nothing stored.
+    const validation = validateProposal(parsed.proposal);
+    if (!validation.ok) {
+      log("bill.parse.invalid", { errors: validation.errors });
+      throw Unprocessable(
+        "invalid_proposal",
+        `The proposed entry didn't validate: ${validation.errors.join(" ")}`
+      );
+    }
+
+    const id = crypto.randomUUID();
+    const key = pdfKey(organizationId, id);
+
+    const r2Timer = startTimer();
+    await c.env.INVOICES.put(key, bytes, { httpMetadata: { contentType: "application/pdf" } });
+    log("bill.r2.stored", { billId: id, key, ms: r2Timer() });
 
     const persistTimer = startTimer();
     await db.transaction().execute(async (trx) => {
@@ -241,7 +253,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
           organizationId,
           uploadedByUserId: userId,
           fileKey: key,
-          fileName: file.name,
+          fileName,
           status: "pending",
           currency: parsed.extracted.currency,
           supplierName: parsed.extracted.supplierName,
@@ -256,20 +268,9 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
         .execute();
       await insertProposal(trx, id, parsed);
     });
-    log("bill.persisted", {
-      billId: id,
-      lineItems: parsed.extracted.lineItems.length,
-      postings: parsed.proposal.postings.length,
-      ms: persistTimer(),
-    });
+    log("bill.persisted", { billId: id, ms: persistTimer() });
 
-    const bill = await db
-      .selectFrom("bill")
-      .selectAll()
-      .where("id", "=", id)
-      .executeTakeFirstOrThrow();
-
-    return c.json({ bill }, 201);
+    return c.json({ billId: id });
   })
 
   .get("/:id", async (c) => {
@@ -327,7 +328,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       journalEntry: journalEntry ?? null,
       postings,
       // Derived from bill.status via the state machine — UI uses these to
-      // show/hide Reparse, Delete, Approve, Decline buttons. Single source
+      // show/hide Analyze, Delete, Approve, Decline buttons. Single source
       // of truth lives in lib/bill-states.ts.
       permissions: permissionsFor(bill.status),
     });
@@ -344,7 +345,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     const bill = await db
       .selectFrom("bill")
-      .select(["id", "status", "fileKey", "fileName"])
+      .select(["id", "status", "fileKey"])
       .where("id", "=", id)
       .where("organizationId", "=", organizationId)
       .executeTakeFirst();
@@ -356,16 +357,12 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       `Only pending bills can be re-parsed — this one is ${bill.status}.`
     );
 
-    log("bill.reparse.start", { billId: id, key: bill.fileKey });
-
-    // Pull the original PDF straight from R2 — no need for the user to
-    // re-upload. Saves bandwidth + keeps the demo snappy.
+    // Pull the original PDF straight from R2 — no re-upload needed.
     const obj = await c.env.INVOICES.get(bill.fileKey);
-    if (!obj) {
-      throw NotFound("The original PDF is no longer in storage.");
-    }
+    if (!obj) throw NotFound("The original PDF is no longer in storage.");
     const bytes = new Uint8Array(await obj.arrayBuffer());
 
+    log("bill.reparse.start", { billId: id });
     const parseTimer = startTimer();
     let parsed;
     try {
@@ -377,13 +374,8 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     }
 
     if (parsed.kind === "not_an_invoice") {
-      log("bill.reparse.rejected", {
-        billId: id,
-        reason: parsed.reason,
-        detail: parsed.detail,
-        ms: parseTimer(),
-      });
-      throw Unprocessable(`parse_${parsed.reason}`, parsed.detail);
+      log("bill.reparse.rejected", { billId: id, detail: parsed.detail, ms: parseTimer() });
+      throw Unprocessable("not_an_invoice", parsed.detail);
     }
 
     log("bill.reparse.done", {
@@ -393,9 +385,18 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       postings: parsed.proposal.postings.length,
     });
 
-    // Replace old data atomically: wipe line items + journal entry (postings
-    // cascade via FK), update bill header fields, re-insert. Bill status
-    // resets to "pending" because we have a fresh proposal needing decision.
+    const validation = validateProposal(parsed.proposal);
+    if (!validation.ok) {
+      log("bill.reparse.invalid", { billId: id, errors: validation.errors });
+      throw Unprocessable(
+        "invalid_proposal",
+        `The proposed entry didn't validate: ${validation.errors.join(" ")}`
+      );
+    }
+
+    // Replace the old proposal atomically: wipe the journal entry + line
+    // items (postings cascade via FK), refresh the header, re-insert, reset
+    // to `pending` since there's a fresh proposal to decide on.
     const persistTimer = startTimer();
     await db.transaction().execute(async (trx) => {
       await trx.deleteFrom("journalEntry").where("billId", "=", id).execute();
