@@ -28,28 +28,11 @@ export function SidebarNotification() {
           <h3 className="flex items-center gap-3 font-semibold text-neutral-900 dark:text-neutral-100 mb-2 mt-1">
             <Logo size={42} className="-mt-1" />
             <div>
-              Welcome to{" "}
-              <a
-                href="https://shadcnstore.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                ShadcnStore
-              </a>
+              Welcome to <span className="text-primary">Accountly</span>
             </div>
           </h3>
           <p className="text-sm text-muted-foreground dark:text-neutral-400 leading-relaxed">
-            Explore our premium Shadcn UI{" "}
-            <a
-              href="https://shadcnstore.com/blocks"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline"
-            >
-              blocks
-            </a>{" "}
-            to build your next project faster.
+            Upload a supplier invoice PDF and review the proposed journal entry.
           </p>
         </div>
       </CardContent>

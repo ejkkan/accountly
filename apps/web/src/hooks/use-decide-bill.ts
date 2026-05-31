@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/client";
+import { unwrap } from "@/lib/api";
 
 /**
  * Approve / decline mutations live in the same file because they're the
@@ -11,19 +12,12 @@ function makeDecider(action: "approve" | "decline") {
   return function useDecider() {
     const qc = useQueryClient();
     return useMutation({
-      mutationFn: async (id: string) => {
-        const res =
+      mutationFn: (id: string) =>
+        unwrap(
           action === "approve"
-            ? await api.api.bills[":id"].approve.$post({ param: { id } })
-            : await api.api.bills[":id"].decline.$post({ param: { id } });
-        if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(body.error ?? `${action} failed`);
-        }
-        return res.json();
-      },
+            ? api.api.bills[":id"].approve.$post({ param: { id } })
+            : api.api.bills[":id"].decline.$post({ param: { id } })
+        ),
       onSuccess: (_, id) => {
         qc.invalidateQueries({ queryKey: ["bills"] });
         qc.invalidateQueries({ queryKey: ["bills", id] });

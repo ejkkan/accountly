@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SidebarConfigProvider } from "@/contexts/sidebar-context";
 import { Providers } from "@/components/providers";
+import { Toaster } from "@/components/ui/sonner";
 import { inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
@@ -18,6 +19,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
           <SidebarConfigProvider>
             <Providers>{children}</Providers>
+            {/* Single toast root for the whole app — mutation failures fire
+                via MutationCache.onError in providers.tsx. */}
+            <Toaster richColors closeButton />
           </SidebarConfigProvider>
         </ThemeProvider>
       </body>

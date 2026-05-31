@@ -1,107 +1,114 @@
 "use client";
 
+import Link from "next/link";
 import {
-  BarChart3,
-  Zap,
-  Users,
   ArrowRight,
+  Scale,
+  Lock,
+  ClipboardCheck,
+  FileSearch,
+  Sparkles,
   Database,
-  Package,
-  Crown,
-  Layout,
-  Palette,
+  Percent,
+  SplitSquareHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Image3D } from "@/components/image-3d";
 
-const mainFeatures = [
+const parseFeatures = [
   {
-    icon: Package,
-    title: "Curated Component Library",
-    description: "Hand-picked blocks and templates for quality and reliability.",
+    icon: FileSearch,
+    title: "Line-item extraction",
+    description: "Supplier, dates, line items, VAT (moms), totals — pulled straight from the PDF.",
   },
   {
-    icon: Crown,
-    title: "Free & Premium Options",
-    description: "Start free, upgrade to premium collections when you need more.",
+    icon: Sparkles,
+    title: "Mapped to the BAS chart",
+    description:
+      "Each line is matched to a BAS kontoplan account — 5010 Lokalhyra, 6530 IT-tjänster, 4010 Inköp material, and so on.",
   },
   {
-    icon: Layout,
-    title: "Ready-to-Use Templates",
-    description: "Copy-paste components that just work out of the box.",
+    icon: Percent,
+    title: "VAT routed to 2640",
+    description:
+      "Swedish moms (25% / 12% / 6%) is pulled off the bill and debited to 2640 Ingående moms automatically.",
   },
   {
-    icon: Zap,
-    title: "Regular Updates",
-    description: "New blocks and templates added weekly to keep you current.",
+    icon: Scale,
+    title: "Balanced double-entry",
+    description: "Debits equal credits — server-side schema rejects anything that doesn't balance.",
   },
 ];
 
-const secondaryFeatures = [
+const reviewFeatures = [
   {
-    icon: BarChart3,
-    title: "Multiple Frameworks",
-    description: "React, Next.js, and Vite compatibility for flexible development.",
+    icon: SplitSquareHorizontal,
+    title: "PDF next to the entry",
+    description:
+      "The original PDF renders on the left, the proposed journal entry on the right. No tab-switching to sanity-check a posting.",
   },
   {
-    icon: Palette,
-    title: "Modern Tech Stack",
-    description: "Built with shadcn/ui, Tailwind CSS, and TypeScript.",
+    icon: ClipboardCheck,
+    title: "Approve or decline",
+    description:
+      "Every entry is a proposal until the accountant signs off — nothing posts silently.",
   },
   {
-    icon: Users,
-    title: "Responsive Design",
-    description: "Mobile-first components for all screen sizes and devices.",
+    icon: Lock,
+    title: "Session-scoped access",
+    description: "Backend routes are gated by better-auth sessions; uploads land in private R2.",
   },
   {
     icon: Database,
-    title: "Developer-Friendly",
-    description: "Clean code, well-documented, easy integration and customization.",
+    title: "Status-tracked bills",
+    description: "Pending → parsed → approved/declined, with the original PDF retrievable by ID.",
   },
+];
+
+const samplePostings = [
+  { account: "5010", name: "Lokalhyra", debit: "10 000,00", credit: "" },
+  { account: "2640", name: "Ingående moms", debit: "2 500,00", credit: "" },
+  { account: "2440", name: "Leverantörsskulder", debit: "", credit: "12 500,00" },
 ];
 
 export function FeaturesSection() {
   return (
     <section id="features" className="py-24 sm:py-32 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-16">
           <Badge variant="outline" className="mb-4">
-            Marketplace Features
+            How it works
           </Badge>
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Everything you need to build amazing web applications
+            Parse the bill, propose the entry, hand it to the accountant
           </h2>
           <p className="text-lg text-muted-foreground">
-            Our marketplace provides curated blocks, templates, landing pages, and admin dashboards
-            to help you build professional applications faster than ever.
+            Accountly is intentionally small. Two flows: upload a PDF, and approve or decline the
+            journal entry that comes back.
           </p>
         </div>
 
-        {/* First Feature Section */}
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16 mb-24">
-          {/* Left Image */}
           <Image3D
             lightSrc="/feature-1-light.png"
             darkSrc="/feature-1-dark.png"
-            alt="Analytics dashboard"
+            alt="Parsed invoice mapped to BAS account codes"
             direction="left"
           />
-          {/* Right Content */}
           <div className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-                Components that accelerate development
+                The parser does the boring half
               </h3>
               <p className="text-muted-foreground text-base text-pretty">
-                Our curated marketplace offers premium blocks and templates designed to save time
-                and ensure consistency across your admin projects.
+                Upload a PDF and Claude returns a structured bill — supplier, line items, VAT,
+                totals — with each line mapped to a BAS kontoplan account.
               </p>
             </div>
 
             <ul className="grid gap-4 sm:grid-cols-2">
-              {mainFeatures.map((feature, index) => (
+              {parseFeatures.map((feature, index) => (
                 <li
                   key={index}
                   className="group hover:bg-accent/5 flex items-start gap-3 p-2 rounded-lg transition-colors"
@@ -117,36 +124,62 @@ export function FeaturesSection() {
               ))}
             </ul>
 
+            <div className="rounded-lg border bg-background/60 p-4 text-sm">
+              <p className="text-xs font-medium text-muted-foreground mb-3">
+                Example: a 10 000 kr rent invoice, 25% moms
+              </p>
+              <div className="space-y-1.5 font-mono text-xs">
+                <div className="grid grid-cols-12 gap-2 text-muted-foreground border-b pb-1.5">
+                  <span className="col-span-2">Konto</span>
+                  <span className="col-span-5">Namn</span>
+                  <span className="col-span-2 text-right">Debet</span>
+                  <span className="col-span-3 text-right">Kredit</span>
+                </div>
+                {samplePostings.map((p) => (
+                  <div key={p.account} className="grid grid-cols-12 gap-2">
+                    <span className="col-span-2 text-foreground">{p.account}</span>
+                    <span className="col-span-5 text-muted-foreground">{p.name}</span>
+                    <span className="col-span-2 text-right tabular-nums">{p.debit}</span>
+                    <span className="col-span-3 text-right tabular-nums">{p.credit}</span>
+                  </div>
+                ))}
+                <div className="grid grid-cols-12 gap-2 border-t pt-1.5 font-semibold">
+                  <span className="col-span-7 text-muted-foreground">Balanserad</span>
+                  <span className="col-span-2 text-right tabular-nums">12 500,00</span>
+                  <span className="col-span-3 text-right tabular-nums">12 500,00</span>
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-4 pe-4 pt-2">
-              <Button size="lg" className="cursor-pointer">
-                <a href="https://shadcnstore.com/templates" className="flex items-center">
-                  Browse Templates
+              <Button size="lg" className="cursor-pointer" asChild>
+                <Link href="/dashboard" className="flex items-center">
+                  Open Dashboard
                   <ArrowRight className="ms-2 size-4" aria-hidden="true" />
-                </a>
+                </Link>
               </Button>
-              <Button size="lg" variant="outline" className="cursor-pointer">
-                <a href="https://shadcnstore.com/blocks">View Components</a>
+              <Button size="lg" variant="outline" className="cursor-pointer" asChild>
+                <Link href="/auth/sign-in">Sign In</Link>
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Second Feature Section - Flipped Layout */}
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-8 xl:gap-16">
-          {/* Left Content */}
           <div className="space-y-6 order-2 lg:order-1">
             <div className="space-y-4">
               <h3 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl">
-                Built for modern development workflows
+                The accountant keeps the final say
               </h3>
               <p className="text-muted-foreground text-base text-pretty">
-                Every component follows best practices with TypeScript, responsive design, and clean
-                code architecture that integrates seamlessly into your projects.
+                Proposed entries never post on their own. The original PDF renders right next to the
+                proposed journal, so the accountant can eyeball the numbers in one glance and flip
+                it to approved or declined.
               </p>
             </div>
 
             <ul className="grid gap-4 sm:grid-cols-2">
-              {secondaryFeatures.map((feature, index) => (
+              {reviewFeatures.map((feature, index) => (
                 <li
                   key={index}
                   className="group hover:bg-accent/5 flex items-start gap-3 p-2 rounded-lg transition-colors"
@@ -163,29 +196,19 @@ export function FeaturesSection() {
             </ul>
 
             <div className="flex flex-col sm:flex-row gap-4 pe-4 pt-2">
-              <Button size="lg" className="cursor-pointer">
-                <a href="#" className="flex items-center">
-                  View Documentation
+              <Button size="lg" className="cursor-pointer" asChild>
+                <Link href="/dashboard" className="flex items-center">
+                  See it in the dashboard
                   <ArrowRight className="ms-2 size-4" aria-hidden="true" />
-                </a>
-              </Button>
-              <Button size="lg" variant="outline" className="cursor-pointer">
-                <a
-                  href="https://github.com/silicondeck/shadcn-dashboard-landing-template"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  GitHub Repository
-                </a>
+                </Link>
               </Button>
             </div>
           </div>
 
-          {/* Right Image */}
           <Image3D
             lightSrc="/feature-2-light.png"
             darkSrc="/feature-2-dark.png"
-            alt="Performance dashboard"
+            alt="Accountant reviewing PDF next to proposed journal entry"
             direction="right"
             className="order-1 lg:order-2"
           />

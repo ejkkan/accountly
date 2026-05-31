@@ -19,39 +19,45 @@ type FaqItem = {
 const faqItems: FaqItem[] = [
   {
     value: "item-1",
-    question: "How do I integrate ShadcnStore components into my project?",
+    question: "What does Accountly actually do?",
     answer:
-      "Integration is simple! All our components are built with shadcn/ui and work with React, Next.js, and Vite. Just copy the component code, install any required dependencies, and paste it into your project. Each component comes with detailed installation instructions and examples.",
+      "It takes a supplier invoice PDF, runs it through Claude to extract the line items, maps each line to an account from the BAS kontoplan, and produces a balanced double-entry journal proposal for an accountant to approve or decline.",
   },
   {
     value: "item-2",
-    question: "What's the difference between free and premium components?",
+    question: "Why is the accountant still in the loop?",
     answer:
-      "Free components include essential UI elements like buttons, forms, and basic layouts. Premium components offer advanced features like complex data tables, analytics dashboards, authentication flows, and complete admin templates. Premium also includes Figma files, priority support, and commercial licenses.",
+      "Because models can misread totals, miscategorise accounts, or hallucinate a line item. Accountly treats every entry as a proposal — nothing posts to a ledger until the accountant explicitly approves it.",
   },
   {
     value: "item-3",
-    question: "Can I use these components in commercial projects?",
+    question: "Where is my uploaded PDF stored?",
     answer:
-      "Yes! Free components come with an MIT license for unlimited use. Premium components include a commercial license that allows usage in client projects, SaaS applications, and commercial products without attribution requirements.",
+      "Uploads land in a private Cloudflare R2 bucket, scoped to your account. The PDF is fetched on demand through a session-gated backend route — never exposed publicly.",
   },
   {
     value: "item-4",
-    question: "Do you provide support and updates?",
+    question: "How is Swedish VAT (moms) handled?",
     answer:
-      "Absolutely! We provide community support for free components through our Discord server and GitHub issues. Premium subscribers get priority email support, regular component updates, and early access to new releases. We also maintain compatibility with the latest shadcn/ui versions.",
+      "If the bill shows moms (typically 25%, 12%, or 6%), the parser pulls it out as a separate posting debited to 2640 Ingående moms. The supplier debt goes to 2440 Leverantörsskulder; the expense lines hit the right BAS account based on what was bought.",
+  },
+  {
+    value: "item-4b",
+    question: "What happens if the proposed entry doesn't balance?",
+    answer:
+      "The journal schema rejects unbalanced entries server-side, so the UI never surfaces a half-entry. If the parsed bill can't be turned into a balanced entry, you'll see why instead.",
   },
   {
     value: "item-5",
-    question: "What frameworks and tools do you support?",
+    question: "Is this production-ready accounting software?",
     answer:
-      "Our components work with React 18+, Next.js 13+, and Vite. We use TypeScript, Tailwind CSS, and follow shadcn/ui conventions. Components are tested with popular tools like React Hook Form, TanStack Query, and Zustand for state management.",
+      "No — Accountly is a take-home assignment / prototype. The aim is to demonstrate the end-to-end flow (upload → parse → review) cleanly, not to replace your accounting system.",
   },
   {
     value: "item-6",
-    question: "How often do you release new components?",
+    question: "What's the tech stack?",
     answer:
-      "We release new components and templates weekly. Premium subscribers get early access to new releases, while free components are updated regularly based on community feedback. You can track our roadmap and request specific components through our GitHub repository.",
+      "Next.js + shadcn/ui on the frontend, a Cloudflare Workers backend with R2 for PDF storage and Postgres for bill state, Claude for PDF parsing, and better-auth for sessions.",
   },
 ];
 
@@ -59,21 +65,16 @@ const FaqSection = () => {
   return (
     <section id="faq" className="py-24 sm:py-32">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-16">
           <Badge variant="outline" className="mb-4">
             FAQ
           </Badge>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">
-            Frequently Asked Questions
-          </h2>
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Common questions</h2>
           <p className="text-lg text-muted-foreground">
-            Everything you need to know about ShadcnStore components, licensing, and integration.
-            Still have questions? We&apos;re here to help!
+            How Accountly parses the PDF, what gets stored, and what the review flow looks like.
           </p>
         </div>
 
-        {/* FAQ Content */}
         <div className="max-w-4xl mx-auto">
           <div className="bg-transparent">
             <div className="p-0">
@@ -101,13 +102,12 @@ const FaqSection = () => {
             </div>
           </div>
 
-          {/* Contact Support CTA */}
           <div className="text-center mt-12">
             <p className="text-muted-foreground mb-4">
-              Still have questions? We&apos;re here to help.
+              Still curious? Open the dashboard and try it.
             </p>
             <Button className="cursor-pointer" asChild>
-              <a href="#contact">Contact Support</a>
+              <a href="/dashboard">Open Dashboard</a>
             </Button>
           </div>
         </div>

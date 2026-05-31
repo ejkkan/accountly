@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { createAuth } from "./auth";
 import { createDb } from "./db";
 import { billsRoutes } from "./routes/bills";
+import { AppError } from "./lib/errors";
+import { log } from "./lib/log";
 
 export interface Env {
   DATABASE_URL: string;
@@ -34,7 +36,31 @@ const app = new Hono<{ Bindings: Env }>()
     });
     return auth.handler(c.req.raw);
   })
-  .route("/api/bills", billsRoutes);
+  .route("/api/bills", billsRoutes)
+
+  // Single source of truth for the error wire-format. `AppError` carries
+  // status/code/message itself; anything else becomes `internal` 500.
+  // Crucially: this DOESN'T add to the route's response type — handlers
+  // declare success shapes via `c.json(...)` and errors leave via throw,
+  // so `hc<AppType>` keeps inferring success types cleanly.
+  .onError((err, c) => {
+    if (err instanceof AppError) {
+      return c.json(
+        { error: { code: err.code, message: err.message, fields: err.fields } },
+        err.status
+      );
+    }
+    log("error.unhandled", {
+      path: c.req.path,
+      method: c.req.method,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return c.json(
+      { error: { code: "internal", message: "Something went wrong on our end." } },
+      500
+    );
+  });
 
 export type AppType = typeof app;
 

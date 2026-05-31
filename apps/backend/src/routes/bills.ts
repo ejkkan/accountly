@@ -3,8 +3,8 @@ import { sql } from "kysely";
 import { requireSession, type AuthVariables } from "../middleware/auth";
 import type { Env } from "../index";
 import { parseBill } from "../lib/parse-bill";
-import type { ParsedBill } from "../lib/journal-schema";
 import { log, startTimer } from "../lib/log";
+import { BadRequest, Conflict, NotFound, Unprocessable, Upstream } from "../lib/errors";
 
 type BillsContext = Context<{ Bindings: Env; Variables: AuthVariables }>;
 
@@ -31,7 +31,7 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
   // undefined at runtime — but the generic `Context` type doesn't carry
   // the route pattern so we narrow defensively.
   const id = c.req.param("id");
-  if (!id) return c.json({ error: "bad request" } as const, 400);
+  if (!id) throw BadRequest("missing_id", "Bill id missing from the URL.");
 
   const bill = await db
     .selectFrom("bill")
@@ -39,9 +39,7 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
     .where("id", "=", id)
     .where("organizationId", "=", organizationId)
     .executeTakeFirst();
-  if (!bill) {
-    return c.json({ error: "not found" } as const, 404);
-  }
+  if (!bill) throw NotFound("That bill isn't in your workspace.");
 
   const journalEntry = await db
     .selectFrom("journalEntry")
@@ -49,7 +47,7 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
     .where("billId", "=", id)
     .executeTakeFirst();
   if (!journalEntry) {
-    return c.json({ error: "no journal entry to decide on" } as const, 409);
+    throw Conflict("no_journal_entry", "This bill doesn't have a journal entry to decide on.");
   }
 
   // Already-terminal: return current state, don't re-stamp decidedAt.
@@ -64,11 +62,7 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
       .set({ status: decision, decidedAt: now, decidedByUserId: userId })
       .where("id", "=", journalEntry.id)
       .execute();
-    await trx
-      .updateTable("bill")
-      .set({ status: decision })
-      .where("id", "=", bill.id)
-      .execute();
+    await trx.updateTable("bill").set({ status: decision }).where("id", "=", bill.id).execute();
   });
 
   log("bill.decided", { billId: id, decision, byUserId: userId });
@@ -89,6 +83,10 @@ async function decide(c: BillsContext, decision: "approved" | "declined") {
  *   POST   /:id/approve      flips journalEntry.status + bill.status to
  *                            "approved"; idempotent if already terminal
  *   POST   /:id/decline      same but to "declined"
+ *
+ * Errors leave via `throw new AppError(...)` so the root `.onError`
+ * handler can emit the single error shape. Don't `return c.json({error})`
+ * — that pollutes the route response type seen by `hc<AppType>`.
  *
  * Kept as one chained expression so the route tree survives into AppType.
  */
@@ -127,10 +125,10 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
     const body = await c.req.parseBody<{ file?: File }>();
     const file = body.file;
     if (!file || typeof file === "string") {
-      return c.json({ error: "missing file" }, 400);
+      throw BadRequest("missing_file", "Please attach a PDF to upload.");
     }
     if (file.type !== "application/pdf") {
-      return c.json({ error: "expected application/pdf" }, 400);
+      throw BadRequest("wrong_type", "Only PDF files are supported.");
     }
 
     // Read once, reuse for R2 + Claude. Worker memory limit is plenty for a
@@ -155,17 +153,29 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
 
     log("bill.parse.start", { billId: id, model: "claude-sonnet-4-6" });
     const parseTimer = startTimer();
-    let parsed: ParsedBill;
+    let parsed;
     try {
       parsed = await parseBill({ ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY }, bytes);
     } catch (err) {
-      // Don't poison the bucket; surface the parse failure cleanly so the
-      // UI can show "retry" later. The R2 object stays so a retry can
-      // re-parse without re-uploading.
       const message = err instanceof Error ? err.message : "parse failed";
       log("bill.parse.failed", { billId: id, ms: parseTimer(), error: message });
-      return c.json({ error: `parse failed: ${message}`, fileKey: key }, 502);
+      // Upstream failure (Claude broke, schema didn't validate). The R2
+      // object stays so a future retry can re-parse without re-uploading.
+      throw Upstream("parse_failed", "We couldn't read this invoice. Try again in a moment.");
     }
+
+    // Discriminated union: the LLM explicitly rejected the doc.
+    if (parsed.kind === "not_an_invoice") {
+      log("bill.parse.rejected", {
+        billId: id,
+        reason: parsed.reason,
+        detail: parsed.detail,
+        ms: parseTimer(),
+      });
+      // R2 object stays — useful for inspection / debugging.
+      throw Unprocessable(`parse_${parsed.reason}`, parsed.detail);
+    }
+
     log("bill.parse.done", {
       billId: id,
       ms: parseTimer(),
@@ -269,9 +279,7 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       .where("organizationId", "=", organizationId)
       .executeTakeFirst();
 
-    if (!bill) {
-      return c.json({ error: "not found" }, 404);
-    }
+    if (!bill) throw NotFound("That bill isn't in your workspace.");
 
     const [lineItems, journalEntry] = await Promise.all([
       db
@@ -310,14 +318,10 @@ export const billsRoutes = new Hono<{ Bindings: Env; Variables: AuthVariables }>
       .where("organizationId", "=", organizationId)
       .executeTakeFirst();
 
-    if (!bill) {
-      return c.json({ error: "not found" }, 404);
-    }
+    if (!bill) throw NotFound("That bill isn't in your workspace.");
 
     const obj = await c.env.INVOICES.get(bill.fileKey);
-    if (!obj) {
-      return c.json({ error: "file gone" }, 404);
-    }
+    if (!obj) throw NotFound("The PDF is missing from storage.");
 
     return new Response(obj.body, {
       headers: {

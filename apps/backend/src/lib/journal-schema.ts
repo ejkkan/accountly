@@ -2,15 +2,25 @@ import { z } from "zod";
 import { ALLOWED_ACCOUNT_CODES } from "./coa";
 
 /**
- * What the LLM is asked to return in one round-trip. Two halves:
+ * What the LLM returns in one round-trip. Output is a discriminated union:
  *
- *   1. `extracted` — the invoice header + line items as faithfully as
- *      possible, used to populate the bill row.
- *   2. `proposal`  — the journal entry: balanced postings + a short rationale.
+ *   { kind: "ok", extracted, proposal }
+ *     The PDF was a supplier invoice; both halves are valid.
+ *
+ *   { kind: "not_an_invoice", reason, detail }
+ *     The PDF wasn't usable — it's a contract, a brochure, a receipt, an
+ *     unreadable scan, or the currency isn't one we handle. `detail` is a
+ *     single sentence the accountant sees verbatim.
+ *
+ * Letting the model classify and reject explicitly beats two alternatives:
+ *   1. Forcing extraction even when the doc isn't an invoice → hallucinated
+ *      line items and account mappings that look reasonable but are wrong.
+ *   2. Catching Zod refinement errors after the fact → opaque messages like
+ *      "Required field missing" with no path to a useful UI.
  *
  * All money is integer minor units (öre / cents) — the prompt is explicit
- * about this so the model doesn't return floats. We re-validate with the
- * refinements below.
+ * about this so the model doesn't return floats. The refinements below
+ * re-validate.
  */
 
 const MoneyMinor = z
@@ -60,8 +70,6 @@ const ProposedPosting = z
     (p) => p.debitMinor > 0 !== p.creditMinor > 0,
     "Posting must move money exactly one direction (XOR debit/credit)"
   )
-  // Reject account codes outside the CoA. The fallback to 4010 happens
-  // upstream — by the time we validate, every code should be allowed.
   .refine((p) => ALLOWED_ACCOUNT_CODES.has(p.accountCode), {
     message: "Unknown account code (not in chart of accounts)",
   });
@@ -77,12 +85,37 @@ const ProposedJournalEntry = z
     return debit === credit;
   }, "Total debits must equal total credits");
 
-export const ParsedBillSchema = z.object({
+/** The success branch of the discriminated union. */
+const ParsedBillOk = z.object({
+  kind: z.literal("ok"),
   extracted: ExtractedBill,
   proposal: ProposedJournalEntry,
 });
 
+/**
+ * The failure branch. `reason` is enum-narrowed so the frontend can branch
+ * on it without parsing strings; `detail` is freeform prose the model
+ * writes in second person to the accountant.
+ */
+export const PARSE_FAILURE_REASONS = [
+  "not_an_invoice",
+  "unreadable",
+  "wrong_currency",
+  "missing_data",
+  "other",
+] as const;
+
+const ParsedBillFailed = z.object({
+  kind: z.literal("not_an_invoice"),
+  reason: z.enum(PARSE_FAILURE_REASONS),
+  detail: z.string().min(1, "Need a sentence the accountant can read").max(500),
+});
+
+export const ParsedBillSchema = z.discriminatedUnion("kind", [ParsedBillOk, ParsedBillFailed]);
+
 export type ParsedBill = z.infer<typeof ParsedBillSchema>;
+export type ParsedBillOkT = z.infer<typeof ParsedBillOk>;
+export type ParsedBillFailedT = z.infer<typeof ParsedBillFailed>;
 export type ExtractedBillT = z.infer<typeof ExtractedBill>;
 export type ExtractedLineItemT = z.infer<typeof ExtractedLineItem>;
 export type ProposedJournalEntryT = z.infer<typeof ProposedJournalEntry>;

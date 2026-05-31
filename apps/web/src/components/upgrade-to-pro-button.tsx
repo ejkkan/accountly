@@ -6,7 +6,7 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/h
 import { Rocket, Blocks, LayoutDashboard, ArrowRight } from "lucide-react";
 import Image from "next/image";
 
-const SHADCN_BLOCKS_URL = "https://shadcnstore.com/blocks";
+const UPGRADE_URL = "/";
 
 export function UpgradeToProButton() {
   return (
@@ -17,9 +17,7 @@ export function UpgradeToProButton() {
             size="lg"
             className="px-6 py-3 bg-gradient-to-br shadow-lg from-slate-900 cursor-pointer to-slate-400 text-white font-bold"
             style={{ minWidth: 180 }}
-            onClick={() =>
-              typeof window !== "undefined" && window.open(SHADCN_BLOCKS_URL, "_blank")
-            }
+            onClick={() => typeof window !== "undefined" && window.open(UPGRADE_URL, "_blank")}
           >
             Upgrade to Pro
             <Rocket size={30} className="ml-1" />
@@ -28,7 +26,7 @@ export function UpgradeToProButton() {
         <HoverCardContent className="mb-3 w-90 rounded-xl shadow-2xl bg-background border border-border p-3 animate-in fade-in slide-in-from-bottom-4 relative mr-4 md:mr-6 lg:mr-8">
           <div className="flex flex-col items-center text-center gap-3">
             <a
-              href={SHADCN_BLOCKS_URL}
+              href={UPGRADE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="cursor-pointer"
@@ -48,7 +46,7 @@ export function UpgradeToProButton() {
             </p>
             <div className="flex flex-row gap-2 w-full mt-2 justify-center">
               <div className="relative w-1/2">
-                <a href={SHADCN_BLOCKS_URL} target="_blank" rel="noopener noreferrer">
+                <a href={UPGRADE_URL} target="_blank" rel="noopener noreferrer">
                   <Button
                     className="w-full flex items-center justify-center cursor-pointer"
                     variant="default"

@@ -4,6 +4,7 @@ import { createDb, type Database } from "../db";
 import type { Env } from "../index";
 import type { Kysely } from "kysely";
 import { log } from "../lib/log";
+import { Forbidden, Unauthorized } from "../lib/errors";
 
 /**
  * Context augmentation added by `requireSession`. Routes that mount the
@@ -17,9 +18,8 @@ export type AuthVariables = {
 
 /**
  * Look up the session via better-auth and attach userId + the user's active
- * organization to the context. Returns 401 with a tiny JSON body if there's
- * no session — the web's proxy.ts already enforces the redirect, so the only
- * way to hit this path unauthenticated is a direct API call.
+ * organization to the context. Throws AppError for the failure cases — the
+ * root `.onError` handler turns it into the standard error body.
  *
  * Active organization defaults to the user's first membership when
  * better-auth hasn't populated session.activeOrganizationId yet (fresh
@@ -40,7 +40,7 @@ export const requireSession = (): MiddlewareHandler<{
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (!session) {
       log("auth.rejected", { reason: "no_session", path: c.req.path });
-      return c.json({ error: "unauthorized" }, 401);
+      throw Unauthorized();
     }
 
     let organizationId = session.session.activeOrganizationId ?? null;
@@ -64,7 +64,7 @@ export const requireSession = (): MiddlewareHandler<{
         userId: session.user.id,
         path: c.req.path,
       });
-      return c.json({ error: "no organization" }, 403);
+      throw Forbidden("no_org", "Your account isn't attached to a workspace.");
     }
 
     c.set("userId", session.user.id);
